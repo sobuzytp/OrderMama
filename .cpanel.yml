@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/lxhytteluf/ordermama.notte.top/
+    - /bin/cp -R * $DEPLOYPATH
