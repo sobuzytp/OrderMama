@@ -1,0 +1,3 @@
+from django.urls import path
+from . import views
+urlpatterns=[path("",views.home,name="home"),path("r/<slug:slug>/table/<int:number>/",views.menu,name="menu"),path("r/<slug:slug>/track/<uuid:token>/",views.track,name="track"),path("r/<slug:slug>/service/<int:number>/<str:kind>/",views.service,name="service"),path("dashboard/<slug:slug>/",views.dashboard,name="dashboard"),path("dashboard/<slug:slug>/kot/",views.kot,name="kot"),path("dashboard/<slug:slug>/status/<int:pk>/",views.status,name="status"),path("dashboard/<slug:slug>/qr.pdf",views.qr_pdf,name="qr_pdf")]
