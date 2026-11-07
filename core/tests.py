@@ -77,3 +77,16 @@ class OrderMamaTests(TestCase):
         subscription.grace_days = 0
         subscription.save()
         self.assertFalse(subscription.in_grace)
+
+    def test_customer_demo_is_available_without_a_restaurant_account(self):
+        response = self.client.get("/demo/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "The Demo Kitchen")
+        self.assertContains(response, "Classic Beef Burger")
+        self.assertEqual(Order.objects.count(), 0)
+
+    def test_home_page_links_directly_to_customer_demo(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "/demo/")
+        self.assertContains(response, "Try Customer Demo")

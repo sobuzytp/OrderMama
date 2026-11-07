@@ -19,6 +19,9 @@ from .models import (
 def home(request):
     return render(request, "home.html")
 
+def demo_menu(request):
+    return render(request, "demo_menu.html")
+
 def menu(request, slug, number):
     restaurant = get_object_or_404(Restaurant, slug=slug, is_active=True)
     table = get_object_or_404(DiningTable, restaurant=restaurant, number=number, is_active=True)
