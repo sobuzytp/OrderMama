@@ -1,0 +1,40 @@
+{% if services %}
+<section class="service-strip">
+  {% for s in services %}
+  <form method="post" action="{% url 'resolve_service' restaurant.slug s.id %}" class="service-chip kind-{{ s.kind }}">
+    {% csrf_token %}
+    <span>{% if s.kind == 'bill' %}🧾 বিল চান{% else %}🙋 ওয়েটার ডাকছে{% endif %} · Table {{ s.table.number }}</span>
+    <button class="btn small-btn secondary-btn">Done</button>
+  </form>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="grid">
+  {% for o in orders %}
+  <article class="panel ticket status-{{ o.status }}">
+    <h2>#{{ o.id }} · Table {{ o.table.number }}</h2>
+    <p class="muted">{{ o.customer_name }} · {{ o.created_at|date:"H:i" }}</p>
+    {% for i in o.items.all %}
+      <p><b>{{ i.quantity }}×</b> {{ i.item_name }}{% if i.note %}<br><span class="cook-note">📝 {{ i.note }}</span>{% endif %}</p>
+    {% endfor %}
+    <b>৳{{ o.total }}</b>
+    <p><span class="badge">{{ o.get_status_display }}</span></p>
+    <form method="post" action="{% url 'status' restaurant.slug o.id %}" class="ticket-actions">
+      {% csrf_token %}
+      {% if o.status == 'pending' %}
+        <button class="btn" name="status" value="accepted">Accept</button>
+        <button class="btn secondary-btn" name="status" value="rejected">Reject</button>
+      {% elif o.status == 'accepted' %}
+        <button class="btn" name="status" value="preparing">Start cooking</button>
+      {% elif o.status == 'preparing' %}
+        <button class="btn" name="status" value="ready">Mark ready</button>
+      {% elif o.status == 'ready' %}
+        <button class="btn" name="status" value="served">Mark served</button>
+      {% endif %}
+    </form>
+  </article>
+  {% empty %}
+  <p>সক্রিয় অর্ডার নেই।</p>
+  {% endfor %}
+</section>

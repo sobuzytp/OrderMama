@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Plan &amp; billing — {{ restaurant.name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div><div class="eyebrow">SUBSCRIPTION</div><h1>Plan &amp; billing</h1></div>
+  <a class="btn secondary-btn" href="{% url 'dashboard' restaurant.slug %}">Back to dashboard</a>
+</div>
+
+<section class="panel">
+  <h2>বর্তমান প্ল্যান</h2>
+  {% if subscription %}
+    <p><b>{{ subscription.plan.name }}</b> ·
+      {% if subscription.status == 'active' %}<span class="badge">Active</span>
+      {% elif subscription.status == 'grace' %}<span class="badge badge-off">Grace period</span>
+      {% else %}<span class="badge badge-off">Expired</span>{% endif %}
+    </p>
+    <p>মেয়াদ শেষ: {{ subscription.ends_at|date:"d M Y, H:i" }}
+      {% if subscription.status == 'active' %}({{ subscription.days_left }} দিন বাকি){% endif %}</p>
+  {% else %}
+    <p class="muted">এখনো কোনো প্ল্যান সক্রিয় নেই।</p>
+  {% endif %}
+</section>
+
+<div class="two-column">
+  <section class="panel">
+    <h2>পেমেন্ট পাঠান (bKash / Nagad)</h2>
+    <ol class="muted">
+      <li>নিচের নম্বরে প্ল্যানের টাকা Send Money করুন:
+        {% if bkash_number %}<br>bKash: <b>{{ bkash_number }}</b>{% endif %}
+        {% if nagad_number %}<br>Nagad: <b>{{ nagad_number }}</b>{% endif %}
+        {% if not bkash_number and not nagad_number %}<br><i>(পেমেন্ট নম্বর এখনো সেট করা হয়নি — অ্যাডমিনের সাথে যোগাযোগ করুন)</i>{% endif %}
+      </li>
+      <li>SMS-এ আসা Transaction ID ও আপনার নম্বর নিচের ফর্মে দিন।</li>
+      <li>যাচাই হলে প্ল্যান চালু বা নবায়ন হবে।</li>
+    </ol>
+    <form method="post" class="stack-form">
+      {% csrf_token %}
+      <label>প্ল্যান
+        <select name="plan" required>
+          {% for p in plans %}<option value="{{ p.id }}">{{ p.name }} — ৳{{ p.monthly_price }} / {{ p.duration_days }} দিন</option>{% endfor %}
+        </select>
+      </label>
+      <label>মাধ্যম
+        <select name="method" required><option value="bkash">bKash</option><option value="nagad">Nagad</option></select>
+      </label>
+      <label>যে নম্বর থেকে পাঠিয়েছেন<input name="sender_number" inputmode="tel" placeholder="01XXXXXXXXX" required></label>
+      <label>Transaction ID<input name="trx_id" placeholder="যেমন: 8N7A6D5E4F" required></label>
+      <button class="btn primary-btn" {% if not plans %}disabled{% endif %}>পেমেন্ট জমা দিন</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>পেমেন্টের ইতিহাস</h2>
+    {% for p in payments %}
+      <p>{{ p.submitted_at|date:"d M Y" }} · {{ p.get_method_display }} · {{ p.trx_id }} · ৳{{ p.amount }} ·
+        <span class="badge {% if p.status != 'verified' %}badge-off{% endif %}">{{ p.get_status_display }}</span></p>
+    {% empty %}
+      <p class="muted">কোনো পেমেন্ট নেই।</p>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

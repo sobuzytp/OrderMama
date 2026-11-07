@@ -1,1 +1,15 @@
-{% extends "base.html" %}{% block content %}<h1>Kitchen Order Ticket</h1><section class="grid">{% for o in orders %}<article class="panel"><h2>#{{ o.id }} · Table {{ o.table.number }}</h2><p>{{ o.customer_name }}</p>{% for i in o.items.all %}<p>{{ i.item_name }} × {{ i.quantity }} {% if i.note %}({{ i.note }}){% endif %}</p>{% endfor %}<b>৳{{ o.total }}</b><p>{{ o.get_status_display }}</p><form method="post" action="{% url 'status' restaurant.slug o.id %}">{% csrf_token %}<select name="status">{% if o.status == 'pending' %}<option value="accepted">Accept</option><option value="rejected">Reject</option>{% elif o.status == 'accepted' %}<option value="preparing">Preparing</option>{% elif o.status == 'preparing' %}<option value="ready">Ready</option>{% elif o.status == 'ready' %}<option value="served">Served</option>{% elif o.status == 'served' %}<option value="paid">Paid</option>{% endif %}</select><button class="btn">Update</button></form></article>{% empty %}<p>সক্রিয় অর্ডার নেই।</p>{% endfor %}</section>{% endblock %}{% block scripts %}<script>let w=new WebSocket((location.protocol==="https:"?"wss":"ws")+"://"+location.host+"/ws/orders/{{ restaurant.slug }}/");w.onmessage=()=>location.reload();setTimeout(()=>location.reload(),25000);</script>{% endblock %}
+{% extends "base.html" %}{% load static %}
+{% block title %}KOT — {{ restaurant.name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div><div class="eyebrow">LIVE KITCHEN</div><h1>Kitchen Order Ticket</h1></div>
+  <div>
+    <button type="button" id="sound-toggle" class="btn secondary-btn">🔕 শব্দ চালু করুন</button>
+    <span id="live-state" class="badge">…</span>
+  </div>
+</div>
+<div id="board" data-url="{% url 'live_feed' restaurant.slug %}" data-poll="{{ poll_ms }}" data-ws="{{ restaurant.slug }}">
+  {% include "partials/kot_board.html" %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'kot.js' %}"></script>{% endblock %}

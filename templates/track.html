@@ -1,1 +1,32 @@
-{% extends "base.html" %}{% block content %}<section class="panel"><h1>অর্ডার #{{ order.id }}</h1><h2>{{ order.get_status_display }}</h2><p>টেবিল {{ order.table.number }} · {{ order.customer_name }}</p>{% for i in order.items.all %}<p>{{ i.item_name }} × {{ i.quantity }} — ৳{{ i.line_total }}</p>{% endfor %}<h2>মোট ৳{{ order.total }}</h2><p>স্ট্যাটাস আপডেট দেখতে পেজ রিফ্রেশ করুন।</p></section>{% endblock %}
+{% extends "base.html" %}{% load static %}
+{% block title %}অর্ডার #{{ order.id }} — {{ restaurant.name }}{% endblock %}
+{% block content %}
+<section class="panel" id="track" data-status-url="{% url 'track_status' restaurant.slug order.public_token %}" data-poll="{{ poll_ms }}">
+  <h1>অর্ডার #{{ order.id }}</h1>
+  <h2 id="status-label" class="status-label">{{ order.get_status_display }}</h2>
+  <p>টেবিল {{ order.table.number }} · {{ order.customer_name }}</p>
+
+  <ol class="steps" id="steps" data-step="{{ step }}">
+    <li>অর্ডার পাঠানো হয়েছে<br><small>Pending</small></li>
+    <li>গৃহীত<br><small>Accepted</small></li>
+    <li>রান্না হচ্ছে<br><small>Cooking</small></li>
+    <li>প্রস্তুত<br><small>Ready</small></li>
+    <li>পরিবেশিত<br><small>Served</small></li>
+  </ol>
+  <p id="rejected-note" class="notice error" {% if order.status != 'rejected' %}hidden{% endif %}>দুঃখিত, অর্ডারটি গ্রহণ করা সম্ভব হয়নি। অনুগ্রহ করে ওয়েটারের সাথে কথা বলুন।</p>
+
+  {% for i in order.items.all %}
+    <p>{{ i.item_name }} × {{ i.quantity }} — ৳{{ i.line_total }}{% if i.note %}<br><small class="muted">📝 {{ i.note }}</small>{% endif %}</p>
+  {% endfor %}
+  <h2>মোট ৳{{ order.total }}</h2>
+  <p class="muted">স্ট্যাটাস নিজে থেকেই আপডেট হবে।</p>
+</section>
+
+<section class="actions">
+  {% csrf_token %}
+  <button type="button" class="service-btn" data-url="{{ waiter_url }}" data-done="ওয়েটারকে জানানো হয়েছে">ওয়েটার ডাকুন</button>
+  <button type="button" class="service-btn" data-url="{{ bill_url }}" data-done="বিলের অনুরোধ পাঠানো হয়েছে">বিল চান</button>
+</section>
+<div id="toast" class="toast" hidden></div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'track.js' %}"></script>{% endblock %}

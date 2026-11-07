@@ -1,73 +1,73 @@
 # OrderMama
 
-OrderMama is a Django-based QR restaurant ordering platform under active development.
+Multi-tenant QR restaurant ordering SaaS built with **Django + HTML/CSS/vanilla JavaScript**.
+Many restaurants share one installation; each has its own menu, tables, staff and orders.
 
-## Technology direction
+## Features
 
-- Backend: Django
-- Frontend: Django Templates with HTML, CSS and vanilla JavaScript
-- Development database: SQLite
-- Production database: PostgreSQL
-- Optional real-time delivery: Django Channels with Redis
+| Area | What it does |
+|------|--------------|
+| QR tables | Each table has an unguessable token. QR links look like `/r/<slug>/t/<token>/`, so the table is detected automatically and cannot be swapped by editing a number. Older `/r/<slug>/table/<n>/` links keep working. |
+| Menu & stock | Owner adds/edits items and price, and flips **In stock / Out of stock** instantly. Sold-out items show "স্টক শেষ" and cannot be ordered. |
+| Cooking notes | Customers write a note per item ("Less spicy"); it appears on the KOT ticket. |
+| Live KOT | Kitchen/cashier screen updates itself and plays a **sound alert** for new orders and waiter/bill calls. |
+| Order tracking | Customers see Pending → Accepted → Cooking → Ready → Served update live, and can call a waiter or ask for the bill. |
+| Super Admin (`/control/`) | Creates restaurants + owner logins, sees plans/expiry, gets expiry warnings, verifies bKash/Nagad payments. |
+| Subscriptions | Plans (price, days, table/menu-item limits), subscriptions with grace days, manual bKash/Nagad payment records with future API fields. |
 
-The customer, restaurant staff and platform administration screens will use the same Django application and role/restaurant-scoped views. A separate React application is not part of the current implementation plan.
-
-## Requirements
-
-- Python 3.11+
-- PostgreSQL for production (SQLite is used by default for local development)
-- Redis recommended when running multiple application processes and using WebSockets
+URLs: `/` · `/demo/` · `/r/<slug>/t/<token>/` · `/r/<slug>/track/<token>/` · `/dashboard/<slug>/` · `/dashboard/<slug>/kot/` · `/dashboard/<slug>/manage/` · `/dashboard/<slug>/billing/` · `/control/` · `/admin/`
 
 ## Local setup
 
 ```bash
-python -m venv .venv
-# Activate the environment
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 python manage.py migrate
-python manage.py check
 python manage.py test
-python manage.py createsuperuser
+python manage.py createsuperuser      # becomes the Super Admin (is_staff)
 python manage.py runserver
 ```
 
-With `DATABASE_URL` empty or unset, Django uses the local `db.sqlite3` file. This is suitable for development and testing.
+## Database: SQLite now, PostgreSQL later (no code changes)
 
-## PostgreSQL for production
+`config/settings.py` reads `DATABASE_URL` through `python-decouple` + `dj-database-url`.
 
-Set `DATABASE_URL` in the hosting environment or private `.env` file:
+* `DATABASE_URL` empty → `db.sqlite3`
+* `DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/NAME` → PostgreSQL
 
-```text
-DATABASE_URL=postgresql://DB_USER:DB_PASSWORD@DB_HOST:5432/DB_NAME
-DEBUG=0
-ALLOWED_HOSTS=your-domain.com
-CSRF_TRUSTED_ORIGINS=https://your-domain.com
-```
+Switching: create the PostgreSQL database, set `DATABASE_URL` in `.env`, run `python manage.py migrate`.
+Switching does **not** copy existing SQLite data. To keep it, export first
+(`python manage.py dumpdata --natural-foreign --natural-primary -e contenttypes -e auth.Permission > data.json`),
+switch, migrate, then `python manage.py loaddata data.json`. Always back up before migrating live data.
 
-Use the actual database name, username, password and host provided by your hosting company. Never commit `.env` or share database credentials. Install dependencies from `requirements.txt`, then run migrations after switching the production environment to PostgreSQL. Keep a verified backup before migrating existing live data; changing the database URL does not copy SQLite data into PostgreSQL.
+## Real-time on cPanel
 
-## Customer experience
+cPanel (Passenger) serves WSGI only, so WebSockets do not work there. The kitchen screen therefore
+**polls `/dashboard/<slug>/live.json` every `LIVE_POLL_SECONDS` (default 5)** — this works everywhere.
+If the server also supports WebSockets (ASGI + `/ws/orders/<slug>/`), the screen uses them and slows
+polling to a 30 s safety net. Browsers only allow sounds after a click, so staff press
+**"শব্দ চালু করুন"** once per device.
 
-- Home page: `/`
-- Sample customer demo: `/demo/` (demonstration only; it does not create a real order or accept payment)
-- Live restaurant menu: `/r/<slug>/table/<number>/`
-- Order tracking: `/r/<slug>/track/<token>/`
-- Restaurant staff dashboard: `/dashboard/<slug>/`
-- Kitchen order view: `/dashboard/<slug>/kot/`
-- Super Admin portal: `/control/`
+## Subscriptions and payments (manual bKash / Nagad)
 
-Create a Restaurant, DiningTable, Category, MenuItem and RestaurantMembership in Django admin. Add a membership with role `owner` for the restaurant owner.
+1. In `/admin/` create **Plans** (price, duration, optional limits).
+2. Set `PAYMENT_BKASH_NUMBER` / `PAYMENT_NAGAD_NUMBER` in `.env`.
+3. The owner opens **Plan & billing**, sends money, and submits the Transaction ID.
+4. Super Admin checks the SMS on `/control/` and clicks **Verify** → the subscription starts or is extended.
+5. Duplicate Transaction IDs are rejected (a rejected ID may be resubmitted).
+6. `ENFORCE_SUBSCRIPTIONS=1` stops ordering for restaurants without a valid (or grace-period) subscription. It is off by default so existing restaurants keep working.
+7. Expiry e-mails: schedule a daily cPanel cron job:
+   `/path/to/venv/bin/python /path/to/manage.py check_subscriptions`
 
-## Current implementation boundaries
+The `PaymentTransaction.gateway_payment_id` / `gateway_payload` fields are reserved for a future automatic API integration.
 
-- Restaurant staff HTML views are scoped to the selected restaurant and role. The WebSocket order stream requires authenticated restaurant staff.
-- Customer order totals are recalculated from current database prices; cart item IDs must belong to the same restaurant and an active category.
-- Subscription records and grace-period calculation exist, but plan enforcement, checkout, renewals, invoices, and payment webhooks are not implemented.
-- Django REST Framework is currently installed but a documented public/staff API is not yet implemented; the current frontend is Django Templates, HTML, CSS and JavaScript.
-- Payment processing is deliberately disabled. Before integrating a provider, add signature-verified idempotent webhooks, transaction records, reconciliation, and provider credentials stored as secrets.
-- Restaurant onboarding, full menu/table CRUD screens, rate limiting, monitoring, backups, and production deployment automation remain follow-up work.
-- The project is not yet production-certified. Complete security review, database backup/restore testing, tenant-isolation testing and deployment checks before accepting real restaurant orders.
+## Deploying to cPanel
+
+1. Pull/upload the code; create a Python App pointing at `passenger_wsgi.py`.
+2. `pip install -r requirements.txt`, create `.env` with `DEBUG=0`, a real `SECRET_KEY`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `SITE_URL`.
+3. `python manage.py migrate && python manage.py collectstatic --noinput`, then restart the app (`tmp/restart.txt`).
+4. Uploaded images (`media/`) need a web-server alias to `MEDIA_ROOT`; they are not served by Django in production.
 
 ## Checks
 
@@ -77,3 +77,8 @@ python manage.py migrate --check
 python manage.py check --deploy
 python manage.py test
 ```
+
+## Not done yet
+
+Automatic bKash/Nagad API payments, subdomain routing (the `Restaurant.subdomain` field is ready), rate limiting,
+monitoring and backup automation. Complete a security review and tenant-isolation test before taking real orders.

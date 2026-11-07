@@ -1,1 +1,53 @@
-{% extends "base.html" %}{% load static %}{% block content %}<section class="hero"><h1>{{ restaurant.name }}</h1><p>{{ restaurant.welcome_message }} · Table {{ table.number }}</p></section><input id="search" placeholder="খাবার খুঁজুন...">{% for c in categories %}<h2>{{ c.name }}</h2><section class="grid">{% for f in c.items.all %}{% if f.is_available %}<article class="food"><div><h3>{{ f.name }}</h3><p>{{ f.description }}</p><b>৳{{ f.price }}</b></div><button class="add" data-id="{{ f.id }}" data-name="{{ f.name }}" data-price="{{ f.price }}">+ যোগ</button></article>{% endif %}{% endfor %}</section>{% endfor %}<section class="panel"><h2>কার্ট: <span id="total">৳0</span></h2><div id="lines"></div><form method="post">{% csrf_token %}<input name="name" placeholder="আপনার নাম" required><input name="phone" placeholder="মোবাইল নম্বর" required><input type="hidden" name="items" id="items"><button class="btn">অর্ডার নিশ্চিত করুন</button></form></section><section class="actions"><form method="post" action="{% url 'service' restaurant.slug table.number 'waiter' %}">{% csrf_token %}<button>ওয়েটার ডাকুন</button></form><form method="post" action="{% url 'service' restaurant.slug table.number 'bill' %}">{% csrf_token %}<button>বিল চান</button></form></section>{% endblock %}{% block scripts %}<script src="{% static 'cart.js' %}"></script>{% endblock %}
+{% extends "base.html" %}{% load static %}
+{% block title %}{{ restaurant.name }} — Table {{ table.number }}{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>{{ restaurant.name }}</h1>
+  <p>{{ restaurant.welcome_message }} · Table {{ table.number }}</p>
+</section>
+
+{% if not ordering_open %}
+<div class="notice error">এই মুহূর্তে অর্ডার নেওয়া বন্ধ আছে। অনুগ্রহ করে ওয়েটারের সাথে কথা বলুন।</div>
+{% endif %}
+
+<input id="search" placeholder="খাবার খুঁজুন...">
+
+{% for c in categories %}
+  <h2>{{ c.name }}</h2>
+  <section class="grid">
+    {% for f in c.items.all %}
+    <article class="food {% if not f.is_available %}sold-out{% endif %}">
+      <div>
+        <h3>{{ f.name }}</h3>
+        <p>{{ f.description }}</p>
+        <b>৳{{ f.price }}</b>
+      </div>
+      {% if f.is_available %}
+        <button class="add" type="button" data-id="{{ f.id }}" data-name="{{ f.name }}" data-price="{{ f.price }}">+ যোগ</button>
+      {% else %}
+        <span class="badge badge-off">স্টক শেষ</span>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
+{% endfor %}
+
+<section class="panel">
+  <h2>কার্ট: <span id="total">৳0</span></h2>
+  <div id="lines"></div>
+  <form method="post" id="order-form">
+    {% csrf_token %}
+    <input name="name" placeholder="আপনার নাম" required maxlength="100">
+    <input name="phone" placeholder="মোবাইল নম্বর" required inputmode="tel" maxlength="20">
+    <input type="hidden" name="items" id="items">
+    <button class="btn" {% if not ordering_open %}disabled{% endif %}>অর্ডার নিশ্চিত করুন</button>
+  </form>
+</section>
+
+<section class="actions">
+  <button type="button" class="service-btn" data-url="{{ waiter_url }}" data-done="ওয়েটারকে জানানো হয়েছে">ওয়েটার ডাকুন</button>
+  <button type="button" class="service-btn" data-url="{{ bill_url }}" data-done="বিলের অনুরোধ পাঠানো হয়েছে">বিল চান</button>
+</section>
+<div id="toast" class="toast" hidden></div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'cart.js' %}"></script>{% endblock %}
