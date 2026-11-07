@@ -38,7 +38,7 @@ database_url = os.getenv("DATABASE_URL")
 DATABASES = {"default": dj_database_url.parse(database_url, conn_max_age=600) if database_url else {
     "ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3",
 }}
-LANGUAGE_CODE = "bn"
+LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Dhaka"
 USE_I18N = True
 USE_TZ = True
