@@ -3,6 +3,7 @@ from . import views, portal_views
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("demo/", views.demo_menu, name="demo_menu"),
     path("control/", portal_views.control, name="control"),
     path("control/restaurants/create/", portal_views.create_restaurant, name="create_restaurant"),
     path("r/<slug:slug>/table/<int:number>/", views.menu, name="menu"),
