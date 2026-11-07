@@ -14,5 +14,6 @@ class WorkspaceLoginView(LoginView):
             user=user, role__in=["owner", "manager", "cashier", "kitchen"]
         ).select_related("restaurant").first()
         if membership:
-            return reverse("dashboard", kwargs={"slug": membership.restaurant.slug})
+            target = "kot" if membership.role == "kitchen" else "dashboard"
+            return reverse(target, kwargs={"slug": membership.restaurant.slug})
         return "/"
