@@ -1,0 +1,57 @@
+{% extends "customer/base.html" %}
+{% load static %}
+{% block title %}রেস্টুরেন্ট রেজিস্টার · OrderMama{% endblock %}
+{% block bodyclass %}site-page register{% endblock %}
+{% block body %}
+<header class="site-head">
+  <a class="wordmark" href="/">OrderMama</a>
+  <a class="head-link" href="/dashboard/login/">স্টাফ লগইন</a>
+</header>
+<main class="form-page">
+  <div class="form-intro">
+    <h1>আপনার রেস্টুরেন্টের জন্য একটি অ্যাকাউন্ট খুলুন</h1>
+    <p class="lead">ফর্ম পাঠালে আমরা যাচাই করে অনুমোদন দেব। অনুমোদনের পর লগইন করে মেনু সাজাতে পারবেন।</p>
+  </div>
+
+  <form id="regForm" class="form-card" novalidate>
+    <div class="field">
+      <label for="restaurant_name">রেস্টুরেন্টের নাম</label>
+      <input id="restaurant_name" name="restaurant_name" maxlength="120" required autocomplete="organization">
+      <p class="err" data-err="restaurant_name"></p>
+    </div>
+    <div class="field">
+      <label for="slug">ওয়েব ঠিকানার নাম <span class="hint">ইংরেজি ছোট হাতের অক্ষর, সংখ্যা, হাইফেন</span></label>
+      <input id="slug" name="slug" maxlength="60" required inputmode="url" autocapitalize="none" spellcheck="false" placeholder="dawat-biryani">
+      <p class="slug-preview" id="slugPreview"></p>
+      <p class="err" data-err="slug"></p>
+    </div>
+    <div class="field">
+      <label for="phone">মোবাইল নম্বর</label>
+      <input id="phone" name="phone" type="tel" inputmode="numeric" required autocomplete="tel" placeholder="01712345678">
+      <p class="err" data-err="phone"></p>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="username">ইউজারনেম</label>
+        <input id="username" name="username" required autocomplete="username" autocapitalize="none">
+        <p class="err" data-err="username"></p>
+      </div>
+      <div class="field">
+        <label for="password">পাসওয়ার্ড <span class="hint">কমপক্ষে ৮ অক্ষর</span></label>
+        <input id="password" name="password" type="password" minlength="8" required autocomplete="new-password">
+        <p class="err" data-err="password"></p>
+      </div>
+    </div>
+    <p class="err form-err" id="formErr" role="alert"></p>
+    <button class="btn btn-primary btn-block" type="submit" id="regBtn">রেজিস্টার করুন</button>
+  </form>
+
+  <div class="form-card done" id="regDone" hidden>
+    <h2>আবেদন জমা হয়েছে</h2>
+    <p>অনুমোদনের অপেক্ষায় আছে। অনুমোদন হলে আপনার মেনুর ঠিকানা হবে:</p>
+    <p class="slug-preview big" id="doneUrl"></p>
+    <a class="btn btn-primary" href="/dashboard/login/">লগইন পেজে যান</a>
+  </div>
+</main>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/register.js' %}"></script>{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<div class="notice">
+  <i data-lucide="lock" class="i"></i>
+  <h1>এটি প্রিমিয়াম প্ল্যানের ফিচার</h1>
+  <p>লাইভ অর্ডার, QR জেনারেটর ও ব্র্যান্ডিং সেটিংস শুধু প্রিমিয়াম প্ল্যানে পাওয়া যায়। বেসিক প্ল্যানে কাস্টমাররা শুধু মেনু দেখতে পারেন।</p>
+  <a class="btn primary" href="{% url 'dashboard:billing' %}">প্ল্যান দেখুন ও আপগ্রেড করুন</a>
+</div>
+{% endblock %}

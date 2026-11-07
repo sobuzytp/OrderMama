@@ -1,0 +1,15 @@
+{% extends "customer/base.html" %}
+{% block title %}{{ restaurant.name }} · মেনু বন্ধ{% endblock %}
+{% block bodyclass %}site-page unavailable{% endblock %}
+{% block body %}
+<main class="center-card">
+  <div class="empty-art" aria-hidden="true">
+    <svg viewBox="0 0 120 96" width="120" height="96" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 52h88c0 20-18 32-44 32S16 72 16 52Z"/><path d="M8 52h104"/><path d="M40 30c-6-6 6-10 0-18M60 30c-6-6 6-10 0-18M80 30c-6-6 6-10 0-18" opacity=".55"/>
+    </svg>
+  </div>
+  <h1>{{ restaurant.name }}</h1>
+  <p class="lead">এই মেনু এখন চালু নেই। কিছুক্ষণ পরে আবার চেষ্টা করুন, অথবা ওয়েটারকে বলুন।</p>
+  {% if restaurant.phone %}<a class="btn btn-primary" href="tel:{{ restaurant.phone }}">{{ restaurant.phone }} নম্বরে ফোন করুন</a>{% endif %}
+</main>
+{% endblock %}

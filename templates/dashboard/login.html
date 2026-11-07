@@ -1,0 +1,39 @@
+{% load static %}<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>লগইন · OrderMama</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+</head>
+<body>
+<main class="login">
+  <section class="login-art" aria-hidden="true">
+    <a class="brand" href="/" tabindex="-1"><span class="brand-mark">অ</span><b>OrderMama</b></a>
+    <div>
+      <h1>অর্ডার আসে, কিচেন জানে।</h1>
+      <p>টেবিলের QR থেকে অর্ডার সরাসরি আপনার কিচেন স্ক্রিনে — এক সেকেন্ডের মধ্যে।</p>
+    </div>
+    <div class="ticket-demo">
+      <div><b>টেবিল ৫</b>২ × কাচ্চি বিরিয়ানি</div>
+      <div><b>টেবিল ২</b>১ × শিক কাবাব</div>
+      <div><b>টেবিল ৮</b>৩ × বোরহানি</div>
+    </div>
+  </section>
+  <section class="login-form">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <h2>লগইন করুন</h2>
+      <p style="color:var(--muted);margin-bottom:20px">রেস্টুরেন্ট স্টাফ ও অ্যাডমিন একই ফর্মে ঢুকবেন।</p>
+      {% if form.errors %}<div class="banner bad" role="alert" style="border-radius:10px;margin-bottom:14px">ইউজারনেম বা পাসওয়ার্ড ভুল। আবার দিন।</div>{% endif %}
+      <div class="field"><label for="id_username">ইউজারনেম</label><input class="inp" id="id_username" name="username" autocomplete="username" autocapitalize="none" required autofocus value="{{ form.username.value|default:'' }}"></div>
+      <div class="field"><label for="id_password">পাসওয়ার্ড</label><input class="inp" id="id_password" name="password" type="password" autocomplete="current-password" required></div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn primary" style="width:100%" type="submit">লগইন</button>
+      <p style="margin-top:16px;color:var(--muted)">নতুন রেস্টুরেন্ট? <a href="/register/">রেজিস্টার করুন</a></p>
+    </form>
+  </section>
+</main>
+</body>
+</html>

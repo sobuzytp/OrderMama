@@ -1,0 +1,92 @@
+{% extends "customer/base.html" %}
+{% block title %}OrderMama · টেবিলে বসেই অর্ডার{% endblock %}
+{% block bodyclass %}site-page landing{% endblock %}
+{% block body %}
+<header class="site-head">
+  <a class="wordmark" href="/">OrderMama</a>
+  <nav class="head-links">
+    <a class="head-link" href="/dashboard/login/">স্টাফ লগইন</a>
+    <a class="btn btn-primary btn-sm" href="/register/">রেস্টুরেন্ট রেজিস্টার করুন</a>
+  </nav>
+</header>
+
+<main>
+  <section class="l-hero">
+    <div class="l-hero-text">
+      <h1>টেবিলের QR স্ক্যান করুন, অর্ডার সোজা কিচেনে যাক।</h1>
+      <p class="lead">কাস্টমারের অ্যাপ বা লগইন লাগে না। রেস্টুরেন্ট পায় লাইভ অর্ডার, নিজের রং ও লোগোয় নিজের মেনু।</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="/register/">রেস্টুরেন্ট রেজিস্টার করুন</a>
+        <a class="btn btn-ghost" href="/dashboard/login/">স্টাফ লগইন</a>
+      </div>
+    </div>
+
+    <figure class="l-ticket" aria-label="অর্ডার টিকেটের নমুনা">
+      <div class="ticket" data-status="preparing">
+        <div class="ticket-top">
+          <div><span class="t-no">টিকেট #১২</span><span class="t-time">টেবিল ৫</span></div>
+          <span class="t-status">রান্না হচ্ছে</span>
+        </div>
+        <div class="ticket-rule"></div>
+        <ul class="t-items">
+          <li><span class="q">২×</span><span class="n">কাচ্চি বিরিয়ানি</span><em>কম ঝাল</em></li>
+          <li><span class="q">১×</span><span class="n">বোরহানি</span></li>
+        </ul>
+        <ol class="steps" style="--p:.5">
+          <li class="done"><span class="node"></span><span class="lbl">পেন্ডিং</span></li>
+          <li class="done"><span class="node"></span><span class="lbl">গৃহীত</span></li>
+          <li class="now"><span class="node"></span><span class="lbl">রান্না হচ্ছে</span></li>
+          <li><span class="node"></span><span class="lbl">রেডি</span></li>
+          <li><span class="node"></span><span class="lbl">পরিবেশিত</span></li>
+        </ol>
+      </div>
+    </figure>
+  </section>
+
+  <section class="l-section">
+    <h2>অর্ডারের পথ</h2>
+    <ol class="l-flow">
+      <li><b>QR স্ক্যান</b><span>টেবিলে বসানো কোড স্ক্যান করলেই মেনু খোলে, টেবিল নম্বর নিজে বোঝা যায়।</span></li>
+      <li><b>অর্ডার</b><span>খাবার বেছে নাম আর মোবাইল নম্বর দিলেই অর্ডার যায়।</span></li>
+      <li><b>কিচেন টিকেট</b><span>রিংটোনসহ ক্যাশিয়ারের স্ক্রিনে পপ-আপ, তারপর কিচেনে।</span></li>
+      <li><b>বিল</b><span>একই টেবিলের সবার অর্ডার এক বিলে, এক বাটনে বিল চাওয়া যায়।</span></li>
+    </ol>
+  </section>
+
+  <section class="l-section l-features">
+    <h2>রেস্টুরেন্টের জন্য</h2>
+    <dl>
+      <div><dt>লাইভ অর্ডার</dt><dd>অর্ডার আসার এক সেকেন্ডের মধ্যে স্ক্রিনে ও সাউন্ডে জানা যায়।</dd></div>
+      <div><dt>নিজের ব্র্যান্ড</dt><dd>লোগো, কভার ছবি, রং ও ডার্ক মোড বেছে নিন; কাস্টমার দেখবে আপনার চেহারা।</dd></div>
+      <div><dt>QR প্রিন্ট</dt><dd>টেবিল সংখ্যা দিলে প্রতিটির জন্য আলাদা প্রিন্ট-রেডি PDF।</dd></div>
+      <div><dt>বিক্রির হিসাব</dt><dd>দৈনিক, সাপ্তাহিক, মাসিক বিক্রি ও সবচেয়ে চলা খাবার।</dd></div>
+    </dl>
+  </section>
+
+  {% if plans %}
+  <section class="l-section">
+    <h2>প্যাকেজ</h2>
+    <div class="l-plans">
+      {% for p in plans %}
+      <article class="plan">
+        <h3>{{ p.name }}</h3>
+        <p class="price">৳{{ p.price|floatformat:"0" }}<span> / {{ p.duration_days }} দিন</span></p>
+        <ul>
+          <li>ডিজিটাল মেনু</li>
+          {% if p.live_orders %}<li>লাইভ অর্ডার ও ওয়েটার কল</li>{% endif %}
+          {% if p.qr_generator %}<li>QR কোড জেনারেটর</li>{% endif %}
+          {% if p.branding %}<li>নিজের ব্র্যান্ডিং</li>{% endif %}
+        </ul>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="l-cta">
+    <h2>আজই আপনার মেনু অনলাইনে আনুন</h2>
+    <a class="btn btn-primary" href="/register/">রেস্টুরেন্ট রেজিস্টার করুন</a>
+  </section>
+</main>
+<footer class="page-foot"><span>OrderMama</span></footer>
+{% endblock %}

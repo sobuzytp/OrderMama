@@ -1,0 +1,42 @@
+from django.db import models
+
+from apps.restaurants.models import Restaurant, validate_image_size
+
+
+class Category(models.Model):
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name="categories")
+    name = models.CharField(max_length=80)
+    position = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["position", "id"]
+        verbose_name_plural = "categories"
+
+    def __str__(self):
+        return f"{self.name} ({self.restaurant.name})"
+
+
+class MenuItem(models.Model):
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name="menu_items")
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="items")
+    name = models.CharField(max_length=120)
+    description = models.CharField(max_length=300, blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    image = models.ImageField(upload_to="menu/", blank=True, validators=[validate_image_size])
+    is_veg = models.BooleanField(default=False)
+    is_stock_out = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "id"]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        # টেনান্ট নিরাপত্তা: আইটেমের restaurant সবসময় ক্যাটাগরির restaurant-এর সমান
+        if self.category_id:
+            self.restaurant_id = self.category.restaurant_id
+        super().save(*args, **kwargs)

@@ -1,0 +1,120 @@
+{% load static %}<!doctype html>
+<html lang="bn" data-theme="{{ brand.theme }}" data-font="{{ brand.font }}" style="--primary: {{ brand.primary }}; --secondary: {{ brand.secondary }};">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="{{ brand.primary }}">
+  <title>{{ restaurant.name }}{% if table %} · {{ table.display_name }}{% endif %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;600;700;800&family=Hind+Siliguri:wght@400;500;600{% if brand.font == 'noto' %}&family=Noto+Sans+Bengali:wght@400;500;600{% endif %}&display=swap">
+  <link rel="stylesheet" href="{% static 'css/customer.css' %}">
+  <script>
+    /* প্রাইমারি রঙের উপরে লেখা সাদা হবে না কালো — উজ্জ্বলতা দেখে ঠিক হয় */
+    (function () {
+      try {
+        var c = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+        var m = /^#([0-9a-f]{6})$/i.exec(c); if (!m) return;
+        var n = parseInt(m[1], 16), f = function (v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+        var L = .2126 * f(n >> 16) + .7152 * f((n >> 8) & 255) + .0722 * f(n & 255);
+        document.documentElement.style.setProperty('--on-primary', L > .42 ? '#1a1410' : '#ffffff');
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body class="menu-page{% if table %} has-table{% endif %}">
+  <a class="skip" href="#menu">মেনুতে যান</a>
+
+  <header class="hero">
+    <div class="hero-cover"{% if brand.cover %} style="background-image: url('{{ brand.cover }}')"{% endif %}>
+      {% if table %}<span class="table-badge"><span class="dot"></span>{{ table.display_name }}</span>{% endif %}
+    </div>
+    <div class="hero-body">
+      {% if brand.logo %}
+        <img class="logo" src="{{ brand.logo }}" alt="" width="72" height="72">
+      {% else %}
+        <span class="logo logo-initial" aria-hidden="true">{{ restaurant.name|slice:":1" }}</span>
+      {% endif %}
+      <div class="hero-text">
+        <h1>{{ restaurant.name }}</h1>
+        {% if brand.welcome %}<p class="welcome">{{ brand.welcome }}</p>{% endif %}
+      </div>
+    </div>
+    {% if table %}
+    <div class="service-row" id="serviceRow" hidden>
+      <button type="button" class="btn btn-ghost" id="callWaiter"><i data-lucide="bell-ring"></i><span>ওয়েটার ডাকুন</span></button>
+      <button type="button" class="btn btn-ghost" id="askBill"><i data-lucide="receipt"></i><span>বিল চান</span></button>
+    </div>
+    {% endif %}
+  </header>
+
+  <main>
+    <div id="notice" class="notice" hidden></div>
+
+    <section class="tools" aria-label="খুঁজুন ও ফিল্টার">
+      <label class="search">
+        <i data-lucide="search"></i>
+        <span class="sr-only">খাবার খুঁজুন</span>
+        <input type="search" id="q" placeholder="খাবার খুঁজুন" autocomplete="off" enterkeyhint="search">
+      </label>
+      <div class="seg" role="radiogroup" aria-label="ধরন">
+        <button type="button" role="radio" aria-checked="true" data-v="all">সব</button>
+        <button type="button" role="radio" aria-checked="false" data-v="veg"><span class="vmark veg"></span>ভেজ</button>
+        <button type="button" role="radio" aria-checked="false" data-v="nonveg"><span class="vmark nonveg"></span>নন-ভেজ</button>
+      </div>
+    </section>
+
+    <nav class="chips" id="chips" aria-label="ক্যাটাগরি"><div class="chips-track" id="chipsTrack"></div></nav>
+
+    <div id="menu" class="menu enter" aria-live="polite" aria-busy="true">
+      <div class="sk-wrap" aria-hidden="true">
+        <div class="sk sk-h"></div>
+        {% for _ in "1234" %}
+        <div class="sk-row"><div class="sk-text"><div class="sk sk-l1"></div><div class="sk sk-l2"></div><div class="sk sk-l3"></div></div><div class="sk sk-img"></div></div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <footer class="page-foot">
+      {% if restaurant.phone %}<a href="tel:{{ restaurant.phone }}">{{ restaurant.phone }}</a>{% endif %}
+      <span>পরিচালনায় OrderMama</span>
+    </footer>
+  </main>
+
+  <div class="dock" id="dock" hidden></div>
+
+  <dialog id="cartSheet" class="sheet" aria-labelledby="cartTitle">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <h2 id="cartTitle">আপনার কার্ট</h2>
+        <button type="button" class="icon-btn" data-close aria-label="বন্ধ করুন">×</button>
+      </header>
+      <div class="sheet-body" id="cartBody"></div>
+      <footer class="sheet-foot" id="cartFoot"></footer>
+    </div>
+  </dialog>
+
+  <dialog id="trackSheet" class="sheet" aria-labelledby="trackTitle">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div>
+          <h2 id="trackTitle">আপনার অর্ডার</h2>
+          <p class="live-state" id="liveState"><span class="pulse"></span><span id="liveText">সংযোগ হচ্ছে…</span></p>
+        </div>
+        <button type="button" class="icon-btn" data-close aria-label="বন্ধ করুন">×</button>
+      </header>
+      <div class="sheet-body" id="trackBody"></div>
+    </div>
+  </dialog>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+  {{ boot|json_script:"boot" }}
+  <script src="https://unpkg.com/lucide@0.451.0/dist/umd/lucide.min.js"></script>
+  <script src="{% static 'js/common.js' %}"></script>
+  <script src="{% static 'js/websocket.js' %}"></script>
+  <script src="{% static 'js/cart.js' %}"></script>
+  <script src="{% static 'js/orders.js' %}"></script>
+  <script src="{% static 'js/menu.js' %}"></script>
+</body>
+</html>

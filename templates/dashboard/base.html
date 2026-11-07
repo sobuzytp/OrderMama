@@ -1,0 +1,44 @@
+{% load static %}<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}{{ title }}{% endblock %} · OrderMama</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% block head %}{% endblock %}
+</head>
+<body class="page-{{ request.resolver_match.url_name }}" data-role="{{ request.user.role }}">
+<div class="shell">
+  <aside class="side">
+    <a class="brand" href="{% url 'dashboard:home' %}"><span class="brand-mark">অ</span><b>OrderMama</b></a>
+    {% if restaurant %}<div class="rest-chip">{{ restaurant.name }}<small>{{ request.user.get_role_display }} · {{ request.user.username }}</small></div>{% endif %}
+    <nav class="nav" aria-label="মূল মেনু">
+      {% for n in nav %}{% if not lock or n.url == 'dashboard:billing' %}
+      <a href="{% url n.url %}" {% if n.active %}aria-current="page"{% endif %}><i data-lucide="{{ n.icon }}" class="i"></i><span>{{ n.label }}</span></a>
+      {% endif %}{% endfor %}
+    </nav>
+    <div class="side-foot">
+      <span class="who">{{ request.user.username }}</span>
+      <form method="post" action="{% url 'dashboard:logout' %}">{% csrf_token %}<button class="link-btn" type="submit"><i data-lucide="log-out" class="i"></i><span>লগআউট</span></button></form>
+    </div>
+  </aside>
+  <div class="main {% block main_class %}{% endblock %}">
+    {% if sub and not lock %}
+      {% if sub.state == 'expiring' %}
+      <div class="banner warn" role="alert"><i data-lucide="clock-alert" class="i"></i><span>আপনার সাবস্ক্রিপশনের মেয়াদ শেষ হতে <b>{% if sub.days_left <= 0 %}আজই{% else %}{{ sub.days_left }} দিন{% endif %}</b> বাকি।</span><a href="{% url 'dashboard:billing' %}">এখনই রিনিউ করুন</a></div>
+      {% elif sub.state == 'grace' %}
+      <div class="banner bad" role="alert"><i data-lucide="triangle-alert" class="i"></i><span>মেয়াদ শেষ হয়েছে। গ্রেস পিরিয়ড চলছে — {{ sub.grace_end|date:"j F" }} তারিখের পর কাস্টমার মেনু বন্ধ হয়ে যাবে।</span><a href="{% url 'dashboard:billing' %}">পেমেন্ট করুন</a></div>
+      {% endif %}
+    {% endif %}
+    {% block main %}
+    <div class="page">{% block content %}{% endblock %}</div>
+    {% endblock %}
+  </div>
+</div>
+<script src="https://unpkg.com/lucide@0.451.0/dist/umd/lucide.min.js"></script>
+<script src="{% static 'js/dashboard-common.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,9 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<div class="notice">
+  <i data-lucide="shield-off" class="i"></i>
+  <h1>এই পেজে আপনার প্রবেশাধিকার নেই</h1>
+  <p>আপনার রোল ({{ request.user.get_role_display }}) অনুযায়ী এই অংশ দেখা যায় না। দরকার হলে ওনারকে রোল বদলাতে বলুন।</p>
+  <a class="btn" href="{% url 'dashboard:home' %}">আমার পেজে ফিরুন</a>
+</div>
+{% endblock %}
