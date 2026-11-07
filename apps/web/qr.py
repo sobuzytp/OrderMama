@@ -80,7 +80,7 @@ def build_qr_pdf(restaurant, tables):
     W, H = A5
     accent = restaurant.primary_color if restaurant.has_feature("branding") else "#E85D04"
     for t in tables:
-        url = f"{settings.SITE_BASE_URL}/{restaurant.slug}/table-{t.number}/"
+        url = f"{settings.SITE_BASE_URL}/{restaurant.slug}/{t.token}/"
         # ওপরের রঙিন পটি
         c.setFillColor(HexColor(accent))
         c.rect(0, H - 120, W, 120, stroke=0, fill=1)

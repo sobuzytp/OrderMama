@@ -3,23 +3,22 @@ import os
 from pathlib import Path
 
 import dj_database_url
-from dotenv import load_dotenv
+from decouple import Csv, config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
 
 
 def env_bool(name, default=False):
-    return os.getenv(name, str(default)).strip().lower() in ("1", "true", "yes", "on")
+    return config(name, default=default, cast=bool)
 
 
 def env_list(name, default=""):
-    return [x.strip() for x in os.getenv(name, default).split(",") if x.strip()]
+    return config(name, default=default, cast=Csv())
 
 
 DEBUG = env_bool("DJANGO_DEBUG", False)
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
+SECRET_KEY = config("DJANGO_SECRET_KEY", default="")
 if not SECRET_KEY:
     if DEBUG:
         SECRET_KEY = "dev-insecure-key-do-not-use-in-production"
@@ -89,16 +88,16 @@ DATABASES = {
 }
 
 # ক্যাশ (রেট-লিমিটের কাউন্টার): প্রোডাকশনে একাধিক ওয়ার্কারের জন্য Redis
-if os.getenv("REDIS_URL"):
+if config("REDIS_URL", default=""):
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": os.getenv("REDIS_URL"),
+            "LOCATION": config("REDIS_URL"),
         }
     }
 
 # Channels: REDIS_URL থাকলে Redis, না থাকলে In-Memory (শুধু ডেভ)
-REDIS_URL = os.getenv("REDIS_URL", "")
+REDIS_URL = config("REDIS_URL", default="")
 if REDIS_URL:
     CHANNEL_LAYERS = {
         "default": {
@@ -110,9 +109,9 @@ else:
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
 AUTH_USER_MODEL = "accounts.User"
-LOGIN_URL = "/dashboard/login/"
-LOGIN_REDIRECT_URL = "/dashboard/"
-LOGOUT_REDIRECT_URL = "/dashboard/login/"
+LOGIN_URL = "/merchant/login/"
+LOGIN_REDIRECT_URL = "/merchant/dashboard/"
+LOGOUT_REDIRECT_URL = "/merchant/login/"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -159,13 +158,13 @@ REST_FRAMEWORK = {
 }
 
 # ব্যবসায়িক সেটিংস
-SITE_BASE_URL = os.getenv("SITE_BASE_URL", "http://localhost:8000").rstrip("/")
+SITE_BASE_URL = config("SITE_BASE_URL", default="http://localhost:8000").rstrip("/")
 TABLE_SESSION_MAX_AGE = 60 * 60 * 6  # ৬ ঘণ্টা
 SUBSCRIPTION_WARNING_DAYS = 3
 
-PAYMENT_GATEWAY = os.getenv("PAYMENT_GATEWAY", "mock")
-SSLCOMMERZ_STORE_ID = os.getenv("SSLCOMMERZ_STORE_ID", "")
-SSLCOMMERZ_STORE_PASSWORD = os.getenv("SSLCOMMERZ_STORE_PASSWORD", "")
+PAYMENT_GATEWAY = config("PAYMENT_GATEWAY", default="mock")
+SSLCOMMERZ_STORE_ID = config("SSLCOMMERZ_STORE_ID", default="")
+SSLCOMMERZ_STORE_PASSWORD = config("SSLCOMMERZ_STORE_PASSWORD", default="")
 SSLCOMMERZ_SANDBOX = env_bool("SSLCOMMERZ_SANDBOX", True)
 
 if not DEBUG:

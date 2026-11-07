@@ -11,7 +11,7 @@ def superadmin_page(template, title):
         if not request.user.is_superuser:
             raise Http404
         return render(request, template, {"title": title, "sa_active": request.resolver_match.url_name})
-    return login_required(login_url="/dashboard/login/")(ensure_csrf_cookie(view))
+    return login_required(login_url="/merchant/login/")(ensure_csrf_cookie(view))
 
 
 home = superadmin_page("superadmin/home.html", "ওভারভিউ")

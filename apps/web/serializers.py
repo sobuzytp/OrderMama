@@ -53,11 +53,12 @@ class MenuItemSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     image = serializers.ImageField(write_only=True, required=False, allow_null=True)
     remove_image = serializers.BooleanField(write_only=True, required=False, default=False)
+    discount_percent = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = MenuItem
         fields = [
-            "id", "category", "name", "description", "price", "image", "image_url", "remove_image",
+            "id", "category", "name", "description", "price", "compare_at_price", "discount_percent", "image", "image_url", "remove_image",
             "is_veg", "is_stock_out", "is_active", "position",
         ]
 

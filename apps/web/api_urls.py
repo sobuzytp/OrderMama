@@ -14,10 +14,10 @@ router.register("staff", d.StaffViewSet, basename="staff")
 urlpatterns = [
     # কাস্টমার
     path("c/<slug:slug>/menu/", c.MenuView.as_view()),
-    path("c/<slug:slug>/<int:number>/session/", c.SessionView.as_view()),
-    path("c/<slug:slug>/<int:number>/orders/", c.OrdersView.as_view()),
-    path("c/<slug:slug>/<int:number>/call-waiter/", c.CallWaiterView.as_view()),
-    path("c/<slug:slug>/<int:number>/request-bill/", c.RequestBillView.as_view()),
+    path("c/<slug:slug>/t/<uuid:token>/session/", c.SessionView.as_view()),
+    path("c/<slug:slug>/t/<uuid:token>/orders/", c.OrdersView.as_view()),
+    path("c/<slug:slug>/t/<uuid:token>/call-waiter/", c.CallWaiterView.as_view()),
+    path("c/<slug:slug>/t/<uuid:token>/request-bill/", c.RequestBillView.as_view()),
     path("register/", sa.RegisterView.as_view()),
     # স্টাফ
     path("d/orders/", d.OrderListView.as_view()),

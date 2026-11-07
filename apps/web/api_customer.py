@@ -39,10 +39,10 @@ def public_restaurant(slug):
     return r
 
 
-def table_from_token(request, slug, number):
+def table_from_token(request, slug, token):
     """টোকেন যাচাই: স্বাক্ষর, মেয়াদ এবং URL-এর টেবিলের সাথে মিল।"""
     r = public_restaurant(slug)
-    table = get_object_or_404(Table, restaurant=r, number=number, is_active=True)
+    table = get_object_or_404(Table, restaurant=r, token=token, is_active=True)
     data = read_table_token(request.headers.get("X-Table-Session", ""))
     if not data or data["t"] != table.pk or data["r"] != r.pk:
         raise APIException_session()
@@ -71,6 +71,8 @@ def menu_data(restaurant):
         items = [
             {
                 "id": i.pk, "name": i.name, "description": i.description, "price": str(i.price),
+                "compare_at_price": str(i.compare_at_price) if i.compare_at_price else "",
+                "discount_percent": i.discount_percent,
                 "image": i.image.url if i.image else "", "is_veg": i.is_veg,
                 "is_stock_out": i.is_stock_out,
             }
@@ -101,9 +103,9 @@ class SessionView(CustomerBase):
     throttle_classes = [TableSessionThrottle, IpThrottle]
     throttle_scope = "customer_session"
 
-    def post(self, request, slug, number):
+    def post(self, request, slug, token):
         r = public_restaurant(slug)
-        table = get_object_or_404(Table, restaurant=r, number=number, is_active=True)
+        table = get_object_or_404(Table, restaurant=r, token=token, is_active=True)
         return Response({"token": make_table_token(table)})
 
 
@@ -117,8 +119,8 @@ class OrdersView(CustomerBase):
             self.throttle_scope = "customer_session"
         return super().get_throttles()
 
-    def get(self, request, slug, number):
-        r, table = table_from_token(request, slug, number)
+    def get(self, request, slug, token):
+        r, table = table_from_token(request, slug, token)
         bill = Bill.objects.filter(table=table).exclude(status=Bill.Status.PAID).first()
         if not bill:
             return Response({"bill": None, "orders": []})
@@ -131,8 +133,8 @@ class OrdersView(CustomerBase):
         return Response({"bill": {"id": bill.pk, "status": bill.status, **{k: str(v) for k, v in bill.totals().items()}},
                          "orders": data})
 
-    def post(self, request, slug, number):
-        r, table = table_from_token(request, slug, number)
+    def post(self, request, slug, token):
+        r, table = table_from_token(request, slug, token)
         if not r.has_feature("live_orders"):
             raise PlanLimit()
         ser = OrderCreateSerializer(data=request.data)
@@ -161,8 +163,8 @@ class CallWaiterView(CustomerBase):
     throttle_classes = [TableSessionThrottle, IpThrottle]
     throttle_scope = "customer_call"
 
-    def post(self, request, slug, number):
-        r, table = table_from_token(request, slug, number)
+    def post(self, request, slug, token):
+        r, table = table_from_token(request, slug, token)
         if not r.has_feature("live_orders"):
             raise PlanLimit()
         if not _recent_request(table, "waiter"):
@@ -174,8 +176,8 @@ class RequestBillView(CustomerBase):
     throttle_classes = [TableSessionThrottle, IpThrottle]
     throttle_scope = "customer_call"
 
-    def post(self, request, slug, number):
-        r, table = table_from_token(request, slug, number)
+    def post(self, request, slug, token):
+        r, table = table_from_token(request, slug, token)
         if not r.has_feature("live_orders"):
             raise PlanLimit()
         try:

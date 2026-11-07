@@ -4,7 +4,8 @@ from django.urls import include, path
 from . import sa_views, views
 
 dashboard_patterns = ([
-    path("", views.dashboard_home, name="home"),
+    path("", views.merchant_root),
+    path("dashboard/", views.dashboard_home, name="home"),
     path("login/", views.StaffLoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("live/", views.live, name="live"),
@@ -28,9 +29,9 @@ urlpatterns = [
     path("", views.landing, name="landing"),
     path("healthz/", views.healthz),
     path("register/", views.register_page, name="register"),
-    path("dashboard/", include(dashboard_patterns)),
-    path("superadmin/", include(superadmin_patterns)),
-    # কাস্টমার: ধরন /restaurant-slug/table-5/ (সবার শেষে, যাতে অন্য পাথের সাথে না মেশে)
-    path("<slug:slug>/table-<int:number>/", views.customer_menu, name="customer_table"),
+    path("merchant/", include(dashboard_patterns)),
+    path("super-admin/", include(superadmin_patterns)),
+    # কাস্টমার (লগইন ছাড়া): /restaurant-slug/ এবং /restaurant-slug/<table-uuid>/ — সবার শেষে
+    path("<slug:slug>/<uuid:token>/", views.customer_menu, name="customer_table"),
     path("<slug:slug>/", views.customer_menu, name="customer_menu"),
 ]

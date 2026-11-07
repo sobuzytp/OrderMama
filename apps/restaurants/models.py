@@ -1,4 +1,5 @@
 import re
+import uuid
 
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
@@ -6,7 +7,8 @@ from django.db import models
 
 RESERVED_SLUGS = {
     "dashboard", "superadmin", "register", "api", "payments", "static", "media",
-    "ws", "django-admin", "admin", "login", "logout", "health",
+    "ws", "django-admin", "admin", "login", "logout", "health", "merchant", "super-admin",
+    "healthz",
 }
 
 hex_color = RegexValidator(r"^#[0-9a-fA-F]{6}$", "সঠিক হেক্স রং দিন (যেমন #E85D04)।")
@@ -88,6 +90,8 @@ class Table(models.Model):
     # মাল্টি-টেনান্সি: প্রতিটি টেবিলে restaurant ফরেন কি
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name="tables")
     number = models.PositiveIntegerField()
+    # QR-এ বসে এই অনুমান-অযোগ্য UUID; নম্বর বদলে অন্য টেবিলে ঢোকা যায় না
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     label = models.CharField(max_length=40, blank=True)
     is_active = models.BooleanField(default=True)
 

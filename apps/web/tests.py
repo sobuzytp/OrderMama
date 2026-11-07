@@ -1,3 +1,4 @@
+import uuid
 from datetime import timedelta
 
 from asgiref.sync import sync_to_async
@@ -57,7 +58,7 @@ class Base(TestCase):
         body = {"customer_name": "রহিম", "customer_phone": "01712345678",
                 "items": items if items is not None else [{"id": self.a.pk, "qty": 2, "note": "কম ঝাল"}]}
         body.update(kw)
-        return self.c.post(f"/api/c/{self.r.slug}/5/orders/", body, content_type="application/json", **self.hdr())
+        return self.c.post(f"/api/c/{self.r.slug}/t/{self.t.token}/orders/", body, content_type="application/json", **self.hdr())
 
     def login(self, user):
         c = Client()
@@ -67,10 +68,10 @@ class Base(TestCase):
 
 class CustomerFlowTests(Base):
     def test_page_menu_and_table_detection(self):
-        res = self.c.get("/cafe-a/table-5/")
+        res = self.c.get(f"/cafe-a/{self.t.token}/")
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "--primary")
-        self.assertEqual(self.c.get("/cafe-a/table-99/").status_code, 404)
+        self.assertEqual(self.c.get(f"/cafe-a/{uuid.uuid4()}/").status_code, 404)
         menu = self.c.get("/api/c/cafe-a/menu/").json()
         self.assertTrue(menu["ordering_enabled"])
         self.assertEqual(menu["categories"][0]["items"][0]["name"], "বিরিয়ানি")
@@ -83,7 +84,7 @@ class CustomerFlowTests(Base):
         self.order(customer_name="করিম", items=[{"id": self.b.pk, "qty": 1}])
         self.assertEqual(Bill.objects.count(), 1)  # একই টেবিল = এক বিল
         self.assertEqual(Order.objects.count(), 2)
-        listing = self.c.get("/api/c/cafe-a/5/orders/", **self.hdr()).json()
+        listing = self.c.get(f"/api/c/cafe-a/t/{self.t.token}/orders/", **self.hdr()).json()
         self.assertEqual(len(listing["orders"]), 2)
         self.assertEqual(listing["bill"]["subtotal"], "600.00")
         self.assertEqual(listing["bill"]["total"], "690.00")  # ৫% ভ্যাট + ১০% সার্ভিস
@@ -94,11 +95,18 @@ class CustomerFlowTests(Base):
         self.assertEqual(self.order(items=[{"id": self.a.pk, "qty": 0}]).status_code, 400)
         self.assertEqual(self.order(items=[{"id": 99999, "qty": 1}]).status_code, 400)
         # টোকেন ছাড়া / ভুল টেবিলের টোকেন
-        res = self.c.post("/api/c/cafe-a/5/orders/", {"customer_name": "x"}, content_type="application/json")
+        res = self.c.post(f"/api/c/cafe-a/t/{self.t.token}/orders/", {"customer_name": "x"}, content_type="application/json")
         self.assertEqual(res.status_code, 401)
         t2 = Table.objects.create(restaurant=self.r, number=6)
-        res = self.c.post("/api/c/cafe-a/5/orders/", {}, content_type="application/json", **self.hdr(t2))
+        res = self.c.post(f"/api/c/cafe-a/t/{self.t.token}/orders/", {}, content_type="application/json", **self.hdr(t2))
         self.assertEqual(res.status_code, 401)
+
+    def test_table_token_unguessable_and_discount_badge(self):
+        self.assertEqual(self.c.get("/cafe-a/table-5/").status_code, 404)  # নম্বর-লিংক আর চলে না
+        self.a.compare_at_price = 300
+        self.a.save()
+        item = self.c.get("/api/c/cafe-a/menu/").json()["categories"][0]["items"][0]
+        self.assertEqual(item["discount_percent"], 16)
 
     def test_stock_out_blocks_order(self):
         self.a.is_stock_out = True
@@ -118,12 +126,12 @@ class CustomerFlowTests(Base):
         self.assertEqual(codes.count(201), 10)
 
     def test_waiter_and_bill_request(self):
-        res = self.c.post("/api/c/cafe-a/5/call-waiter/", {}, content_type="application/json", **self.hdr())
+        res = self.c.post(f"/api/c/cafe-a/t/{self.t.token}/call-waiter/", {}, content_type="application/json", **self.hdr())
         self.assertEqual(res.status_code, 200)
-        res = self.c.post("/api/c/cafe-a/5/request-bill/", {}, content_type="application/json", **self.hdr())
+        res = self.c.post(f"/api/c/cafe-a/t/{self.t.token}/request-bill/", {}, content_type="application/json", **self.hdr())
         self.assertEqual(res.status_code, 400)  # অর্ডার নেই
         self.order()
-        res = self.c.post("/api/c/cafe-a/5/request-bill/", {}, content_type="application/json", **self.hdr())
+        res = self.c.post(f"/api/c/cafe-a/t/{self.t.token}/request-bill/", {}, content_type="application/json", **self.hdr())
         self.assertEqual(res.status_code, 200)
         self.assertEqual(Bill.objects.get().status, "requested")
 
@@ -132,7 +140,7 @@ class SubscriptionTests(Base):
     def test_basic_plan_is_menu_only(self):
         r, t, a, _ = make_restaurant("cafe-basic", self.basic)
         self.assertFalse(self.c.get("/api/c/cafe-basic/menu/").json()["ordering_enabled"])
-        res = self.c.post("/api/c/cafe-basic/5/orders/", {}, content_type="application/json",
+        res = self.c.post(f"/api/c/cafe-basic/t/{t.token}/orders/", {}, content_type="application/json",
                           HTTP_X_TABLE_SESSION=make_table_token(t))
         self.assertEqual(res.status_code, 403)
 
@@ -145,7 +153,7 @@ class SubscriptionTests(Base):
         sub.end_date = timezone.now() - timedelta(days=5)
         sub.save()
         self.assertEqual(self.c.get("/api/c/cafe-a/menu/").status_code, 403)
-        self.assertEqual(self.c.get("/cafe-a/table-5/").status_code, 403)
+        self.assertEqual(self.c.get(f"/cafe-a/{self.t.token}/").status_code, 403)
 
     def test_payment_reactivates_and_is_idempotent(self):
         sub = self.r.subscription
@@ -187,7 +195,7 @@ class DashboardTests(Base):
         self.assertEqual(self.post_status(kc, "preparing").status_code, 200)
         self.assertEqual(self.post_status(kc, "ready").status_code, 200)
         self.assertEqual(self.post_status(cc, "served").status_code, 200)
-        track = self.c.get("/api/c/cafe-a/5/orders/", **self.hdr()).json()
+        track = self.c.get(f"/api/c/cafe-a/t/{self.t.token}/orders/", **self.hdr()).json()
         self.assertEqual(track["orders"][0]["status"], "served")
         self.assertEqual(self.post_status(oc, "bogus").status_code, 400)
 
@@ -201,22 +209,36 @@ class DashboardTests(Base):
     def test_tenant_isolation(self):
         r2, *_ = make_restaurant("cafe-b", self.prem)
         other = self.login(staff(r2, R.OWNER))
-        self.assertEqual(self.post_status(other, "accepted").status_code, 404)
+        self.assertEqual(self.post_status(other, "accepted").status_code, 403)  # ID অনুমান → 403
         self.assertEqual(other.get("/api/d/orders/").json(), [])
         self.assertEqual(other.get("/api/d/menu-items/").json()[0]["name"], "বিরিয়ানি")  # নিজের মেনু
         self.assertEqual(len(other.get("/api/d/menu-items/").json()), 2)
+
+    def test_id_guessing_returns_403_everywhere(self):
+        r2, t2, a2, _ = make_restaurant("cafe-b", self.prem)
+        other = self.login(staff(r2, R.OWNER))
+        mine = MenuItem.objects.get(pk=self.a.pk)
+        self.assertEqual(other.patch(f"/api/d/menu-items/{mine.pk}/", {"price": "1"}, content_type="application/json").status_code, 403)
+        self.assertEqual(other.delete(f"/api/d/menu-items/{mine.pk}/").status_code, 403)
+        self.assertEqual(other.patch(f"/api/d/categories/{mine.category_id}/", {"name": "x"}, content_type="application/json").status_code, 403)
+        self.assertEqual(other.patch(f"/api/d/tables/{self.t.pk}/", {"label": "x"}, content_type="application/json").status_code, 403)
+        self.assertEqual(other.get(f"/api/d/qr/?table={self.t.pk}").status_code, 403)
+        bill = Bill.objects.get()
+        self.assertEqual(other.post(f"/api/d/bills/{bill.pk}/pay/", {}, content_type="application/json").status_code, 403)
+        self.assertEqual(MenuItem.objects.get(pk=mine.pk).price, self.a.price)  # কিছুই বদলায়নি
+        self.assertEqual(other.patch("/api/d/menu-items/999999/", {}, content_type="application/json").status_code, 404)
 
     def test_kitchen_cannot_see_analytics_or_menu(self):
         kc = self.login(self.kitchen)
         self.assertEqual(kc.get("/api/d/analytics/").status_code, 403)
         self.assertEqual(kc.get("/api/d/menu-items/").status_code, 403)
-        self.assertEqual(kc.get("/dashboard/analytics/").status_code, 403)
+        self.assertEqual(kc.get("/merchant/analytics/").status_code, 403)
         self.assertEqual(kc.get("/api/d/orders/").status_code, 200)
-        self.assertEqual(kc.get("/dashboard/live/").status_code, 200)
+        self.assertEqual(kc.get("/merchant/live/").status_code, 200)
 
     def test_unauthenticated(self):
         self.assertIn(self.c.get("/api/d/orders/").status_code, (401, 403))
-        self.assertEqual(self.c.get("/dashboard/live/").status_code, 302)
+        self.assertEqual(self.c.get("/merchant/live/").status_code, 302)
 
     def test_bill_pay_requires_all_served(self):
         cc = self.login(self.cashier)
@@ -283,7 +305,7 @@ class DashboardTests(Base):
         oc = self.login(self.owner)
         res = oc.patch("/api/d/branding/", {"primary_color": "#112233", "theme": "dark"}, content_type="application/json")
         self.assertEqual(res.status_code, 200, res.content)
-        self.assertContains(self.c.get("/cafe-a/table-5/"), "#112233")
+        self.assertContains(self.c.get(f"/cafe-a/{self.t.token}/"), "#112233")
         self.assertEqual(oc.patch("/api/d/branding/", {"primary_color": "red"}, content_type="application/json").status_code, 400)
 
     def test_analytics(self):
@@ -330,17 +352,18 @@ class SuperAdminTests(Base):
 
     def test_reserved_slug_and_duplicate(self):
         base = {"restaurant_name": "x", "phone": "01712345678", "username": "u1", "password": "Strong-pass-77"}
-        for slug in ("dashboard", "cafe-a"):
+        for slug in ("dashboard", "merchant", "super-admin", "cafe-a"):
             res = self.c.post("/api/register/", {**base, "slug": slug}, content_type="application/json")
             self.assertEqual(res.status_code, 400)
 
     def test_only_superuser(self):
         owner = self.login(staff(self.r, R.OWNER))
         self.assertEqual(owner.get("/api/sa/restaurants/").status_code, 403)
-        self.assertEqual(owner.get("/superadmin/").status_code, 404)
-        self.assertEqual(self.ac.get("/superadmin/").status_code, 200)
+        self.assertEqual(owner.get("/super-admin/").status_code, 404)
+        self.assertEqual(self.ac.get("/super-admin/").status_code, 200)
         stats = self.ac.get("/api/sa/stats/").json()
         self.assertEqual(stats["restaurants"], 1)
+        self.assertTrue(stats["health"]["database"] and stats["health"]["realtime"])
 
     def test_expiry_warning_listing(self):
         sub = self.r.subscription
@@ -356,12 +379,12 @@ class PaymentPageTests(Base):
         sub = self.r.subscription
         sub.end_date = timezone.now() - timedelta(days=10)
         sub.save()
-        self.assertEqual(oc.get("/dashboard/live/").status_code, 402)  # মেয়াদ শেষ → লক
-        self.assertEqual(oc.get("/dashboard/billing/").status_code, 200)  # বিলিং খোলা
+        self.assertEqual(oc.get("/merchant/live/").status_code, 402)  # মেয়াদ শেষ → লক
+        self.assertEqual(oc.get("/merchant/billing/").status_code, 200)  # বিলিং খোলা
         res = oc.post("/payments/start/", {"plan": self.prem.pk})
         url = res.json()["redirect"]
         oc.post(url, {"result": "ok"})
-        self.assertEqual(oc.get("/dashboard/live/").status_code, 200)
+        self.assertEqual(oc.get("/merchant/live/").status_code, 200)
 
 
 class WebSocketTests(TransactionTestCase):

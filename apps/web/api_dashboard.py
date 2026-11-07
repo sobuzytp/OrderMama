@@ -58,12 +58,27 @@ class TenantMixin:
             raise PlanRequired("এই ফিচারটি আপনার বর্তমান প্ল্যানে নেই। প্রিমিয়ামে আপগ্রেড করুন।")
 
 
+def owned_or_403(model, pk, restaurant):
+    """ID অনুমান করে অন্য রেস্টুরেন্টের অবজেক্ট ধরতে গেলে সাথে সাথে 403 (নেই হলে 404)।"""
+    obj = get_object_or_404(model.objects.all(), pk=pk)
+    if obj.restaurant_id != restaurant.pk:
+        raise PermissionDenied("এই তথ্যে আপনার অ্যাক্সেস নেই।")
+    return obj
+
+
 class TenantAPIView(TenantMixin, APIView):
     permission_classes = [ManagerPermission]
 
 
 class TenantViewSet(TenantMixin, viewsets.ModelViewSet):
     permission_classes = [ManagerPermission]
+    model = None  # সাবক্লাসে সেট হয়
+
+    def get_object(self):
+        obj = owned_or_403(self.model, self.kwargs["pk"], self.restaurant)
+        obj = get_object_or_404(self.filter_queryset(self.get_queryset()), pk=obj.pk)
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
@@ -89,7 +104,7 @@ class OrderStatusView(TenantAPIView):
     feature = "live_orders"
 
     def post(self, request, pk):
-        order = get_object_or_404(Order, pk=pk, restaurant=self.restaurant)
+        order = owned_or_403(Order, pk, self.restaurant)
         new = request.data.get("status", "")
         if new not in STATUS_ROLES:
             return Response({"detail": "অবৈধ স্ট্যাটাস।"}, status=400)
@@ -121,7 +136,7 @@ class ServiceRequestResolveView(TenantAPIView):
     feature = "live_orders"
 
     def post(self, request, pk):
-        s = get_object_or_404(ServiceRequest, pk=pk, restaurant=self.restaurant)
+        s = owned_or_403(ServiceRequest, pk, self.restaurant)
         s.is_resolved = True
         s.save(update_fields=["is_resolved"])
         return Response({"ok": True})
@@ -156,7 +171,7 @@ class BillPayView(TenantAPIView):
     feature = "live_orders"
 
     def post(self, request, pk):
-        bill = get_object_or_404(Bill, pk=pk, restaurant=self.restaurant)
+        bill = owned_or_403(Bill, pk, self.restaurant)
         if bill.status == Bill.Status.PAID:
             return Response({"detail": "বিলটি আগেই পরিশোধিত।"}, status=400)
         if bill.orders.filter(status__in=Order.ACTIVE_STATUSES).exists() and not (
@@ -169,6 +184,7 @@ class BillPayView(TenantAPIView):
 
 # ---------- মেনু ম্যানেজমেন্ট ----------
 class CategoryViewSet(TenantViewSet):
+    model = Category
     serializer_class = CategorySerializer
     pagination_class = None
 
@@ -180,6 +196,7 @@ class CategoryViewSet(TenantViewSet):
 
 
 class MenuItemViewSet(TenantViewSet):
+    model = MenuItem
     serializer_class = MenuItemSerializer
     pagination_class = None
 
@@ -192,6 +209,7 @@ class MenuItemViewSet(TenantViewSet):
 
 # ---------- টেবিল ও QR ----------
 class TableViewSet(TenantViewSet):
+    model = Table
     serializer_class = TableSerializer
     pagination_class = None
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
@@ -240,6 +258,9 @@ class QRPdfView(TenantAPIView):
         tables = Table.objects.filter(restaurant=self.restaurant, is_active=True)
         tid = request.query_params.get("table")
         if tid:
+            if not str(tid).isdigit():
+                return Response({"detail": "অবৈধ টেবিল।"}, status=400)
+            owned_or_403(Table, int(tid), self.restaurant)
             tables = tables.filter(pk=tid)
         tables = list(tables)
         if not tables:
@@ -272,6 +293,7 @@ class AnalyticsView(TenantAPIView):
 
 # ---------- স্টাফ ----------
 class StaffViewSet(TenantViewSet):
+    model = User
     serializer_class = StaffSerializer
     pagination_class = None
 

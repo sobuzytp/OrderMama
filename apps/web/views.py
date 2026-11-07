@@ -47,7 +47,7 @@ def staff_page(roles=None, feature=None, always=False):
 
     def deco(view):
         @wraps(view)
-        @login_required(login_url="/dashboard/login/")
+        @login_required(login_url="/merchant/login/")
         @ensure_csrf_cookie
         def wrapper(request, *a, **kw):
             u = request.user
@@ -90,11 +90,11 @@ class StaffLoginView(LoginView):
     def get_success_url(self):
         u = self.request.user
         if u.is_superuser and not u.restaurant_id:
-            return "/superadmin/"
-        return self.get_redirect_url() or "/dashboard/"
+            return "/super-admin/"
+        return self.get_redirect_url() or "/merchant/dashboard/"
 
 
-@login_required(login_url="/dashboard/login/")
+@login_required(login_url="/merchant/login/")
 def dashboard_home(request):
     u = request.user
     if u.is_superuser and not u.restaurant_id:
@@ -153,23 +153,24 @@ def billing(request):
 
 
 # ---------- কাস্টমার ----------
-def customer_menu(request, slug, number=None):
+def customer_menu(request, slug, token=None):
     r = get_object_or_404(Restaurant, slug=slug)
     if not r.is_operational:
         return render(request, "customer/unavailable.html", {"restaurant": r}, status=403)
     table = None
-    token = ""
-    if number is not None:
-        table = get_object_or_404(Table, restaurant=r, number=number, is_active=True)
-        token = make_table_token(table)
+    session = ""
+    if token is not None:
+        table = get_object_or_404(Table, restaurant=r, token=token, is_active=True)
+        session = make_table_token(table)
     brand = brand_for(r)
     boot = {
-        "slug": r.slug, "table": table.number if table else None, "token": token,
+        "slug": r.slug, "table": table.number if table else None, "tableName": table.display_name if table else "",
+        "token": session,
         "restaurantName": r.name,
         "api": {"menu": f"/api/c/{r.slug}/menu/"},
     }
     if table:
-        base = f"/api/c/{r.slug}/{table.number}"
+        base = f"/api/c/{r.slug}/t/{table.token}"
         boot["api"].update(orders=f"{base}/orders/", waiter=f"{base}/call-waiter/",
                            bill=f"{base}/request-bill/", session=f"{base}/session/")
     resp = render(request, "customer/menu.html", {
@@ -177,6 +178,10 @@ def customer_menu(request, slug, number=None):
     })
     resp["Cache-Control"] = "no-store"
     return resp
+
+
+def merchant_root(request):
+    return redirect("dashboard:home")
 
 
 def landing(request):

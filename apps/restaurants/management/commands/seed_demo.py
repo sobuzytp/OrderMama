@@ -90,6 +90,6 @@ class Command(BaseCommand):
         if not User.objects.filter(username="admin").exists():
             User.objects.create_superuser("admin", password="admin12345")
         self.stdout.write(self.style.SUCCESS(
-            "ডেমো প্রস্তুত।\n  কাস্টমার : /demo-biryani/table-3/  এবং  /demo-basic/table-1/\n"
+            "ডেমো প্রস্তুত।\n  কাস্টমার : প্রতিটি টেবিলের লিংক: python manage.py shell -c "from apps.restaurants.models import Table; [print(t.restaurant.slug, t.number, t.token) for t in Table.objects.all()[:3]]"  → /<slug>/<token>/\n"
             "  স্টাফ    : biryani_owner / biryani_manager / biryani_cashier / biryani_kitchen / biryani_waiter  (পাসওয়ার্ড demo12345)\n"
             "  সুপার অ্যাডমিন: admin / admin12345"))

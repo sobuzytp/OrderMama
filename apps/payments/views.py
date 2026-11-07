@@ -43,7 +43,7 @@ def mock_checkout(request, tran_id):
         else:
             payment.status = Payment.Status.CANCELLED
             payment.save(update_fields=["status"])
-        return redirect("/dashboard/billing/")
+        return redirect("dashboard:billing")
     html = (
         "<meta charset=utf-8><title>Mock Payment</title>"
         f"<h2>Mock পেমেন্ট — ৳{payment.amount} ({payment.plan.name})</h2>"
@@ -59,7 +59,7 @@ def _finish(request, ok_status):
     tran_id = request.POST.get("tran_id", "")
     payment = Payment.objects.filter(tran_id=tran_id).first()
     if not payment:
-        return redirect("/dashboard/billing/")
+        return redirect("dashboard:billing")
     if ok_status == "paid":
         val_id = request.POST.get("val_id", "")
         try:
@@ -74,7 +74,7 @@ def _finish(request, ok_status):
     elif payment.status == Payment.Status.PENDING:
         payment.status = ok_status
         payment.save(update_fields=["status"])
-    return redirect("/dashboard/billing/")
+    return redirect("dashboard:billing")
 
 
 @csrf_exempt

@@ -23,6 +23,8 @@ class MenuItem(models.Model):
     name = models.CharField(max_length=120)
     description = models.CharField(max_length=300, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    # আগের দাম (ডিসকাউন্ট ব্যাজের জন্য): price-এর চেয়ে বেশি হলে "-X%" ব্যাজ দেখায়
+    compare_at_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     image = models.ImageField(upload_to="menu/", blank=True, validators=[validate_image_size])
     is_veg = models.BooleanField(default=False)
     is_stock_out = models.BooleanField(default=False)
@@ -34,6 +36,12 @@ class MenuItem(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def discount_percent(self):
+        if self.compare_at_price and self.compare_at_price > self.price:
+            return int((self.compare_at_price - self.price) * 100 / self.compare_at_price)
+        return 0
 
     def save(self, *args, **kwargs):
         # টেনান্ট নিরাপত্তা: আইটেমের restaurant সবসময় ক্যাটাগরির restaurant-এর সমান

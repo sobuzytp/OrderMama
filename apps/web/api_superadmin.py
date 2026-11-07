@@ -17,6 +17,24 @@ from .serializers import PlanSerializer, RegisterSerializer, restaurant_admin_ro
 from .throttles import RegisterThrottle
 
 
+def platform_health():
+    """ডেটাবেজ ও রিয়েল-টাইম লেয়ার সচল কি না (সুপার অ্যাডমিন হেলথ কার্ডের জন্য)।"""
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+    from django.db import connection
+
+    health = {"database": True, "realtime": True, "checked_at": timezone.now().isoformat()}
+    try:
+        connection.ensure_connection()
+    except Exception:
+        health["database"] = False
+    try:
+        async_to_sync(get_channel_layer().group_send)("health_probe", {"type": "ping"})
+    except Exception:
+        health["realtime"] = False
+    return health
+
+
 class SuperBase(APIView):
     permission_classes = [IsPlatformAdmin]
 
@@ -37,6 +55,7 @@ class StatsView(SuperBase):
         revenue = Payment.objects.filter(status="paid").aggregate(t=Sum("amount"))["t"] or 0
         month = Payment.objects.filter(status="paid", paid_at__gte=now - timedelta(days=30)).aggregate(t=Sum("amount"))["t"] or 0
         return Response({
+            "health": platform_health(),
             "restaurants": Restaurant.objects.count(),
             "pending": Restaurant.objects.filter(is_approved=False).count(),
             "blocked": Restaurant.objects.filter(is_blocked=True).count(),
