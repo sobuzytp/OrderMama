@@ -219,9 +219,29 @@ class RegisterSerializer(serializers.Serializer):
 class PlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
-        fields = ["id", "code", "name", "price", "duration_days", "live_orders",
-                  "qr_generator", "branding", "is_active"]
-        read_only_fields = ["code"]
+        fields = ["id", "code", "name", "price", "duration_days", "grace_days",
+                  "live_orders", "qr_generator", "branding", "is_active"]
+
+    def validate_code(self, value):
+        value = value.lower().strip()
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", value):
+            raise serializers.ValidationError("কোডে শুধু ছোট হাতের ইংরেজি অক্ষর, সংখ্যা ও হাইফেন ব্যবহার করুন।")
+        return value
+
+    def validate_price(self, value):
+        if value < 0:
+            raise serializers.ValidationError("দাম শূন্য বা তার বেশি হতে হবে।")
+        return value
+
+    def validate_duration_days(self, value):
+        if not 1 <= value <= 3650:
+            raise serializers.ValidationError("মেয়াদ ১ থেকে ৩৬৫০ দিনের মধ্যে হতে হবে।")
+        return value
+
+    def validate_grace_days(self, value):
+        if not 0 <= value <= 365:
+            raise serializers.ValidationError("গ্রেস ডে ০ থেকে ৩৬৫ দিনের মধ্যে হতে হবে।")
+        return value
 
 
 def restaurant_admin_row(r):
