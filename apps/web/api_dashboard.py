@@ -105,10 +105,12 @@ class PulseView(TenantAPIView):
     feature = "live_orders"
 
     def get(self, request):
+        # অর্ডার কখনো ডিলিট হয় না এবং প্রতিটি পরিবর্তনে updated_at বদলায়, তাই শুধু Max(updated_at) যথেষ্ট;
+        # (restaurant, updated_at) ইনডেক্সে এটি পুরো টেবিল স্ক্যান করে না।
         from django.db.models import Count, Max
-        o = Order.objects.filter(restaurant=self.restaurant).aggregate(n=Count("id"), m=Max("updated_at"))
+        o = Order.objects.filter(restaurant=self.restaurant).aggregate(m=Max("updated_at"))
         sr = ServiceRequest.objects.filter(restaurant=self.restaurant, is_resolved=False).aggregate(n=Count("id"), m=Max("id"))
-        return Response({"v": f"{o['n']}|{o['m']}|{sr['n']}|{sr['m']}"})
+        return Response({"v": f"{o['m']}|{sr['n']}|{sr['m']}"})
 
 
 class OrderStatusView(TenantAPIView):
