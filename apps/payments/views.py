@@ -1,8 +1,10 @@
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError, transaction
 from django.http import Http404, HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -19,11 +21,41 @@ def start_payment(request):
     if not (user.restaurant_id and user.is_restaurant_manager):
         return JsonResponse({"detail": "অনুমতি নেই।"}, status=403)
     plan = get_object_or_404(Plan, pk=request.POST.get("plan"), is_active=True)
+    selected = request.POST.get("gateway", settings.PAYMENT_GATEWAY)
+    allowed = {"manual", "sslcommerz"} if settings.PAYMENT_GATEWAY == "both" else {settings.PAYMENT_GATEWAY}
+    if selected not in allowed:
+        return JsonResponse({"detail": "এই পেমেন্ট পদ্ধতি চালু নেই।"}, status=400)
+
+    if selected == "manual":
+        method = request.POST.get("method", "").lower()
+        sender = request.POST.get("sender_number", "").strip()
+        trx_id = request.POST.get("trx_id", "").strip().upper()
+        if method not in Payment.Method.values:
+            return JsonResponse({"detail": "bKash, Nagad অথবা Rocket নির্বাচন করুন।"}, status=400)
+        if not sender.isdigit() or len(sender) not in (11, 13):
+            return JsonResponse({"detail": "সঠিক Sender Number দিন।"}, status=400)
+        if not trx_id or len(trx_id) > 100:
+            return JsonResponse({"detail": "সঠিক TrxID দিন।"}, status=400)
+        if Payment.objects.filter(trx_id__iexact=trx_id).exists():
+            return JsonResponse({"detail": "এই TrxID আগেই জমা দেওয়া হয়েছে।"}, status=409)
+        if Payment.objects.filter(restaurant=user.restaurant, status=Payment.Status.SUBMITTED).exists():
+            return JsonResponse({"detail": "আপনার একটি পেমেন্ট অনুমোদনের অপেক্ষায় আছে।"}, status=409)
+        try:
+            with transaction.atomic():
+                payment = Payment.objects.create(
+                    restaurant=user.restaurant, plan=plan, amount=plan.price,
+                    gateway="manual", method=method, sender_number=sender, trx_id=trx_id,
+                    status=Payment.Status.SUBMITTED,
+                )
+        except IntegrityError:
+            return JsonResponse({"detail": "একই TrxID অথবা পেন্ডিং পেমেন্ট আগে থেকেই রয়েছে।"}, status=409)
+        return JsonResponse({"ok": True, "status": payment.status})
+
     payment = Payment.objects.create(
-        restaurant=user.restaurant, plan=plan, amount=plan.price, gateway=settings.PAYMENT_GATEWAY
+        restaurant=user.restaurant, plan=plan, amount=plan.price, gateway=selected
     )
     try:
-        url = get_gateway().initiate(payment, user)
+        url = get_gateway(selected).initiate(payment, user)
     except GatewayError as e:
         payment.status = Payment.Status.FAILED
         payment.save(update_fields=["status"])
@@ -33,7 +65,6 @@ def start_payment(request):
 
 @login_required
 def mock_checkout(request, tran_id):
-    """শুধু ডেভেলপমেন্টে: বিকাশ/নগদের নকল পেমেন্ট পেজ।"""
     if not settings.DEBUG or settings.PAYMENT_GATEWAY != "mock":
         raise Http404
     payment = get_object_or_404(Payment, tran_id=tran_id, restaurant=request.user.restaurant)
