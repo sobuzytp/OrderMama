@@ -388,6 +388,47 @@ class PaymentPageTests(Base):
         self.assertEqual(oc.get("/merchant/live/").status_code, 200)
 
 
+    @override_settings(PAYMENT_GATEWAY="both")
+    def test_manual_payment_submit_duplicate_and_approve(self):
+        owner = staff(self.r, R.OWNER)
+        oc = self.login(owner)
+        payload = {"plan": self.prem.pk, "gateway": "manual", "method": "bkash",
+                   "sender_number": "01601642548", "trx_id": "abc123xyz"}
+        res = oc.post("/payments/start/", payload)
+        self.assertEqual(res.status_code, 200, res.content)
+        payment = Payment.objects.get()
+        self.assertEqual(payment.status, Payment.Status.SUBMITTED)
+        self.assertEqual(oc.post("/payments/start/", payload).status_code, 409)
+        other = make_restaurant("cafe-b", self.prem)[0]
+        other_owner = self.login(staff(other, R.OWNER))
+        self.assertEqual(other_owner.post("/payments/start/", payload).status_code, 409)
+        admin = self.login(User.objects.create_superuser("manual-root", password="Pass-12345!"))
+        res = admin.post(f"/api/sa/payments/{payment.pk}/review/",
+                         {"action": "approve"}, content_type="application/json")
+        self.assertEqual(res.status_code, 200, res.content)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.APPROVED)
+        self.assertIsNotNone(payment.paid_at)
+        self.assertEqual(oc.get("/merchant/billing/").status_code, 200)
+
+    @override_settings(PAYMENT_GATEWAY="both")
+    def test_manual_payment_reject_requires_reason(self):
+        owner = staff(self.r, R.OWNER)
+        oc = self.login(owner)
+        res = oc.post("/payments/start/", {"plan": self.prem.pk, "gateway": "manual",
+                        "method": "nagad", "sender_number": "01601642548", "trx_id": "NAGAD-001"})
+        self.assertEqual(res.status_code, 200, res.content)
+        payment = Payment.objects.get()
+        admin = self.login(User.objects.create_superuser("reject-root", password="Pass-12345!"))
+        url = f"/api/sa/payments/{payment.pk}/review/"
+        self.assertEqual(admin.post(url, {"action": "reject"}, content_type="application/json").status_code, 400)
+        res = admin.post(url, {"action": "reject", "reason": "টাকা পাওয়া যায়নি"}, content_type="application/json")
+        self.assertEqual(res.status_code, 200, res.content)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.REJECTED)
+        self.assertEqual(payment.rejection_reason, "টাকা পাওয়া যায়নি")
+
+
 class WebSocketTests(TransactionTestCase):
     def setUp(self):
         cache.clear()
