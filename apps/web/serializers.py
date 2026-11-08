@@ -228,6 +228,14 @@ class PlanSerializer(serializers.ModelSerializer):
         fields = ["id", "code", "name", "price", "duration_days", "live_orders",
                   "qr_generator", "branding", "is_active"]
 
+    def validate_code(self, value):
+        qs = Plan.objects.filter(code=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("এই প্ল্যান কোডটি আগে থেকেই আছে।")
+        return value
+
     def validate_name(self, value):
         value = value.strip()
         if not value:
