@@ -16,16 +16,16 @@ def env_list(name, default=""):
     return config(name, default=default, cast=Csv())
 
 
-DEBUG = env_bool("DJANGO_DEBUG", False)
+DEBUG = env_bool("DJANGO_DEBUG", env_bool("DEBUG", False))
 
-SECRET_KEY = config("DJANGO_SECRET_KEY", default="")
+SECRET_KEY = config("DJANGO_SECRET_KEY", default=config("SECRET_KEY", default=""))
 if not SECRET_KEY:
     if DEBUG:
         SECRET_KEY = "dev-insecure-key-do-not-use-in-production"
     else:
         raise RuntimeError("DJANGO_SECRET_KEY সেট করা নেই (.env দেখুন)।")
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", config("ALLOWED_HOSTS", default="localhost,127.0.0.1"))
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
@@ -159,7 +159,7 @@ REST_FRAMEWORK = {
 }
 
 # ব্যবসায়িক সেটিংস
-SITE_BASE_URL = config("SITE_BASE_URL", default="http://localhost:8000").rstrip("/")
+SITE_BASE_URL = config("SITE_BASE_URL", default=config("SITE_URL", default="http://localhost:8000")).rstrip("/")
 TABLE_SESSION_MAX_AGE = 60 * 60 * 6  # ৬ ঘণ্টা
 SUBSCRIPTION_WARNING_DAYS = 3
 
