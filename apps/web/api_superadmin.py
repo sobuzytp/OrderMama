@@ -113,12 +113,28 @@ class PlanListView(SuperBase):
     def get(self, request):
         return Response(PlanSerializer(Plan.objects.all(), many=True).data)
 
+    def post(self, request):
+        serializer = PlanSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        plan = serializer.save()
+        return Response(PlanSerializer(plan).data, status=status.HTTP_201_CREATED)
 
-class PlanDetailView(generics.UpdateAPIView):
+
+class PlanDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsPlatformAdmin]
     queryset = Plan.objects.all()
     serializer_class = PlanSerializer
-    http_method_names = ["patch", "put"]
+    http_method_names = ["get", "patch", "put", "delete"]
+
+    def destroy(self, request, *args, **kwargs):
+        plan = self.get_object()
+        if plan.subscriptions.exists() or Payment.objects.filter(plan=plan).exists():
+            return Response(
+                {"detail": "এই প্ল্যানের সাবস্ক্রিপশন বা পেমেন্ট রেকর্ড আছে। মুছে না দিয়ে ‘বিক্রির জন্য চালু’ বন্ধ করুন।"},
+                status=status.HTTP_409_CONFLICT,
+            )
+        plan.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PaymentListView(SuperBase):

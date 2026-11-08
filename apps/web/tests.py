@@ -399,6 +399,30 @@ class SuperAdminPlanManagementTests(Base):
             response = self.admin_client.patch(url, payload, content_type="application/json")
             self.assertEqual(response.status_code, 400, response.content)
 
+    def test_superadmin_can_create_and_edit_dynamic_plan_identity(self):
+        response = self.admin_client.post("/api/sa/plans/", {
+            "code": "starter_plus", "name": "স্টার্টার প্লাস", "price": "799.00",
+            "duration_days": 60, "live_orders": True, "qr_generator": False,
+            "branding": False, "is_active": True,
+        }, content_type="application/json")
+        self.assertEqual(response.status_code, 201, response.content)
+        plan_id = response.json()["id"]
+        response = self.admin_client.patch(f"/api/sa/plans/{plan_id}/", {
+            "code": "starter", "name": "স্টার্টার", "price": "899.00",
+        }, content_type="application/json")
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["code"], "starter")
+        self.assertEqual(response.json()["name"], "স্টার্টার")
+
+    def test_plan_delete_is_blocked_when_referenced(self):
+        response = self.admin_client.delete(f"/api/sa/plans/{self.prem.pk}/")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(Plan.objects.filter(pk=self.prem.pk).exists())
+
+    def test_plan_delete_and_create_require_platform_admin(self):
+        self.assertEqual(self.owner_client.post("/api/sa/plans/", {}, content_type="application/json").status_code, 403)
+        self.assertEqual(self.owner_client.delete(f"/api/sa/plans/{self.prem.pk}/").status_code, 403)
+
     def test_only_platform_admin_can_manage_plans(self):
         self.assertEqual(self.owner_client.get("/api/sa/plans/").status_code, 403)
         self.assertEqual(

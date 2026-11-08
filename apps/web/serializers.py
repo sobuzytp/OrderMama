@@ -217,11 +217,32 @@ class RegisterSerializer(serializers.Serializer):
 
 # ---------- সুপার অ্যাডমিন ----------
 class PlanSerializer(serializers.ModelSerializer):
+    code = serializers.RegexField(
+        regex=r"^[a-z][a-z0-9_-]{1,19}$",
+        max_length=20,
+        error_messages={"invalid": "কোড ২–২০ অক্ষরের ছোট হাতের ইংরেজি অক্ষর, সংখ্যা, _ বা - হতে হবে।"},
+    )
+
     class Meta:
         model = Plan
         fields = ["id", "code", "name", "price", "duration_days", "live_orders",
                   "qr_generator", "branding", "is_active"]
-        read_only_fields = ["code"]
+
+    def validate_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("প্ল্যানের নাম লিখুন।")
+        return value
+
+    def validate_price(self, value):
+        if value < 0 or value > 99999999.99:
+            raise serializers.ValidationError("প্ল্যানের দাম ০ থেকে ৯৯,৯৯৯,৯৯৯.৯৯ টাকার মধ্যে হতে হবে।")
+        return value
+
+    def validate_duration_days(self, value):
+        if not 1 <= value <= 3650:
+            raise serializers.ValidationError("প্ল্যানের মেয়াদ ১ থেকে ৩৬৫০ দিনের মধ্যে হতে হবে।")
+        return value
 
     def validate_price(self, value):
         if value < 0 or value > 99999999.99:

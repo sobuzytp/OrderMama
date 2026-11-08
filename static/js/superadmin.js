@@ -66,18 +66,61 @@
   async function loadP() {
     try {
       const list = await OM.api("/api/sa/plans/"), box = $("plans"); OM.clear(box);
+      const field = (label, value, type, attrs = {}) => {
+        const input = h("input.inp", { type, value, ...attrs });
+        return { input, node: h("div.field", h("label", label), input) };
+      };
+      const add = h("button.btn.primary", { type: "button" }, "+ নতুন প্ল্যান");
+      add.onclick = async () => {
+        const code = field("প্ল্যান কোড (যেমন starter)", "", "text", { maxlength: 20, required: true });
+        const name = field("প্ল্যানের নাম", "", "text", { maxlength: 60, required: true });
+        const price = field("দাম (৳)", "0", "number", { min: 0, max: 99999999.99, step: "0.01" });
+        const days = field("মেয়াদ (দিন)", "30", "number", { min: 1, max: 3650 });
+        const err = h("div.err-text", { role: "alert" });
+        const dlg = OM.modal("নতুন সাবস্ক্রিপশন প্ল্যান", h("div", code.node, name.node, h("div.grid2", price.node, days.node),
+          h("p.hint", "নতুন প্ল্যানে ফিচারগুলো ডিফল্টভাবে বন্ধ থাকবে। তৈরি করার পর প্রয়োজনমতো চালু করুন।"), err),
+          [h("button.btn", { type: "button", onclick: () => dlg.close() }, "বাতিল"),
+           h("button.btn.primary", { type: "button", id: "new-plan-save" }, "তৈরি করুন")]);
+        dlg.querySelector("#new-plan-save").onclick = async () => {
+          try {
+            await OM.api("/api/sa/plans/", { method: "POST", json: {
+              code: code.input.value.trim().toLowerCase(), name: name.input.value.trim(),
+              price: price.input.value, duration_days: Number(days.input.value),
+              live_orders: false, qr_generator: false, branding: false, is_active: true
+            }});
+            dlg.close(); OM.toast("নতুন প্ল্যান তৈরি হয়েছে", "ok"); loadP();
+          } catch (e) { err.textContent = e.message; }
+        };
+      };
+      box.append(h("div.page-tools", add));
       list.forEach((p) => {
-        const price = h("input.inp", { type: "number", min: 0, max: 99999999.99, step: "0.01", value: p.price, id: "pp" + p.id }), days = h("input.inp", { type: "number", min: 1, max: 3650, value: p.duration_days, id: "pd" + p.id });
+        const code = h("input.inp", { type: "text", maxlength: 20, value: p.code });
+        const name = h("input.inp", { type: "text", maxlength: 60, value: p.name });
+        const price = h("input.inp", { type: "number", min: 0, max: 99999999.99, step: "0.01", value: p.price });
+        const days = h("input.inp", { type: "number", min: 1, max: 3650, value: p.duration_days });
         const flag = (k, l) => h("label.switch", h("input", { type: "checkbox", checked: p[k], dataset: { k } }), h("i"), l);
-        const form = h("div", h("div.grid2", h("div.field", h("label", { for: "pp" + p.id }, "দাম (৳)"), price), h("div.field", h("label", { for: "pd" + p.id }, "মেয়াদ (দিন)"), days)),
-          h("div", { style: "display:grid;gap:10px;margin-bottom:14px" }, flag("live_orders", "লাইভ অর্ডার ও KOT"), flag("qr_generator", "QR PDF জেনারেটর"), flag("branding", "ব্র্যান্ডিং"), flag("is_active", "বিক্রির জন্য চালু")));
+        const form = h("div", h("div.field", h("label", "প্ল্যানের নাম"), name),
+          h("div.field", h("label", "প্ল্যান কোড"), code),
+          h("div.grid2", h("div.field", h("label", "দাম (৳)"), price), h("div.field", h("label", "মেয়াদ (দিন)"), days)),
+          h("div", { style: "display:grid;gap:10px;margin-bottom:14px" },
+            flag("live_orders", "লাইভ অর্ডার ও KOT"), flag("qr_generator", "QR PDF জেনারেটর"),
+            flag("branding", "ব্র্যান্ডিং"), flag("is_active", "বিক্রির জন্য চালু")));
         const save = h("button.btn.primary", { type: "button" }, "সংরক্ষণ");
         save.onclick = async () => {
-          const body = { price: price.value, duration_days: Number(days.value) };
+          const body = { code: code.value.trim().toLowerCase(), name: name.value.trim(),
+            price: price.value, duration_days: Number(days.value) };
           form.querySelectorAll("input[data-k]").forEach((c) => (body[c.dataset.k] = c.checked));
-          try { await OM.api(`/api/sa/plans/${p.id}/`, { method: "PATCH", json: body }); OM.toast(`${p.name} সংরক্ষিত`, "ok"); } catch (e) { OM.fail(e); }
+          try { await OM.api(`/api/sa/plans/${p.id}/`, { method: "PATCH", json: body }); OM.toast(`${name.value} সংরক্ষিত`, "ok"); loadP(); }
+          catch (e) { OM.fail(e); }
         };
-        box.append(h("article.plan", h("h3", p.name), h("span.hint", "কোড: " + p.code), form, save));
+        const remove = h("button.btn.sm.danger", { type: "button" }, "মুছুন");
+        remove.onclick = async () => {
+          if (!await OM.confirm(`“${p.name}” প্ল্যানটি মুছবেন? সাবস্ক্রিপশন/পেমেন্ট যুক্ত থাকলে মুছতে দেবে না।`, { ok: "মুছুন", danger: true })) return;
+          try { await OM.api(`/api/sa/plans/${p.id}/`, { method: "DELETE" }); OM.toast("প্ল্যান মুছে ফেলা হয়েছে", "ok"); loadP(); }
+          catch (e) { OM.fail(e); }
+        };
+        box.append(h("article.plan", h("h3", p.name), h("span.hint", "প্ল্যান ID: " + p.id), form,
+          h("div.page-tools", save, remove)));
       });
     } catch (e) { OM.clear($("plans")).append(OM.errorBox(e.message, loadP)); }
   }
