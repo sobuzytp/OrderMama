@@ -223,6 +223,16 @@ class PlanSerializer(serializers.ModelSerializer):
                   "qr_generator", "branding", "is_active"]
         read_only_fields = ["code"]
 
+    def validate_price(self, value):
+        if value < 0 or value > 99999999.99:
+            raise serializers.ValidationError("প্ল্যানের দাম ০ থেকে ৯৯,৯৯৯,৯৯৯.৯৯ টাকার মধ্যে হতে হবে।")
+        return value
+
+    def validate_duration_days(self, value):
+        if not 1 <= value <= 3650:
+            raise serializers.ValidationError("প্ল্যানের মেয়াদ ১ থেকে ৩৬৫০ দিনের মধ্যে হতে হবে।")
+        return value
+
 
 def restaurant_admin_row(r):
     sub = r.current_subscription

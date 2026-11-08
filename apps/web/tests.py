@@ -373,6 +373,60 @@ class SuperAdminTests(Base):
 
 
 @override_settings(DEBUG=True, PAYMENT_GATEWAY="mock")
+class SuperAdminPlanManagementTests(Base):
+    def setUp(self):
+        super().setUp()
+        self.admin = User.objects.create_superuser("plan-root", password="Pass-12345!")
+        self.admin_client = self.login(self.admin)
+        self.owner_client = self.login(staff(self.r, R.OWNER))
+
+    def test_superadmin_can_update_plan_features_and_price(self):
+        response = self.admin_client.patch(
+            f"/api/sa/plans/{self.prem.pk}/",
+            {"price": "1799.00", "duration_days": 45, "live_orders": True,
+             "qr_generator": False, "branding": True, "is_active": True},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.prem.refresh_from_db()
+        self.assertEqual(str(self.prem.price), "1799.00")
+        self.assertEqual(self.prem.duration_days, 45)
+        self.assertFalse(self.prem.qr_generator)
+
+    def test_plan_update_rejects_invalid_price_and_duration(self):
+        url = f"/api/sa/plans/{self.prem.pk}/"
+        for payload in ({"price": "-1.00"}, {"duration_days": 0}, {"duration_days": 3651}):
+            response = self.admin_client.patch(url, payload, content_type="application/json")
+            self.assertEqual(response.status_code, 400, response.content)
+
+    def test_only_platform_admin_can_manage_plans(self):
+        self.assertEqual(self.owner_client.get("/api/sa/plans/").status_code, 403)
+        self.assertEqual(
+            self.owner_client.patch(
+                f"/api/sa/plans/{self.prem.pk}/", {"price": "1.00"},
+                content_type="application/json",
+            ).status_code,
+            403,
+        )
+
+    def test_restaurant_approval_rejects_invalid_plan_and_days(self):
+        pending, *_ = make_restaurant("phase-two-pending", approved=False)
+        url = f"/api/sa/restaurants/{pending.pk}/approve/"
+        self.assertEqual(
+            self.admin_client.post(url, {"plan": "unknown", "days": 30},
+                                   content_type="application/json").status_code,
+            400,
+        )
+        self.assertEqual(
+            self.admin_client.post(url, {"plan": "basic", "days": 0},
+                                   content_type="application/json").status_code,
+            400,
+        )
+        pending.refresh_from_db()
+        self.assertFalse(pending.is_approved)
+        self.assertFalse(Subscription.objects.filter(restaurant=pending).exists())
+
+
 class PaymentPageTests(Base):
     def test_mock_payment_flow(self):
         owner = staff(self.r, R.OWNER)
