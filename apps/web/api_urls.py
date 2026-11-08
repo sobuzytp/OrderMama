@@ -36,6 +36,7 @@ urlpatterns = [
     path("sa/restaurants/", sa.RestaurantListView.as_view()),
     path("sa/restaurants/<int:pk>/approve/", sa.ApproveView.as_view()),
     path("sa/restaurants/<int:pk>/extend/", sa.ExtendView.as_view()),
+    path("sa/restaurants/<int:pk>/trial/", sa.TrialView.as_view()),
     path("sa/restaurants/<int:pk>/block/", sa.BlockView.as_view()),
     path("sa/restaurants/<int:pk>/unblock/", sa.UnblockView.as_view()),
     path("sa/plans/", sa.PlanListView.as_view()),
