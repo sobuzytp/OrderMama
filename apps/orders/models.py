@@ -108,7 +108,10 @@ class Order(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        indexes = [models.Index(fields=["restaurant", "status", "created_at"])]
+        indexes = [
+            models.Index(fields=["restaurant", "status", "created_at"]),
+            models.Index(fields=["restaurant", "updated_at"], name="order_rest_updated_idx"),
+        ]
 
     def __str__(self):
         return f"অর্ডার #{self.pk}"

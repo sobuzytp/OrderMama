@@ -1,4 +1,5 @@
 """OrderMama settings. সব গোপন তথ্য .env ফাইল থেকে আসে।"""
+import logging
 import os
 from pathlib import Path
 
@@ -99,9 +100,21 @@ def _redis_alive(url):
         return False
 
 
+logger = logging.getLogger(__name__)
+
 REDIS_URL = config("REDIS_URL", default="")
-if not _redis_alive(REDIS_URL):
+if REDIS_URL and not _redis_alive(REDIS_URL):
+    # প্রোডাকশনে Redis দেওয়া থাকলে সেটা না চললে চুপচাপ মেমরিতে নামা বিপজ্জনক:
+    # একাধিক ওয়ার্কারে WebSocket ব্রডকাস্ট ও রেট-লিমিট আলাদা হয়ে যায়।
+    if not DEBUG and not env_bool("ALLOW_REDIS_FALLBACK", False):
+        raise RuntimeError(
+            "REDIS_URL দেওয়া আছে কিন্তু Redis-এ পৌঁছানো যাচ্ছে না। Redis চালু করুন, "
+            "অথবা (শুধু একক-প্রসেসে) ALLOW_REDIS_FALLBACK=True দিন।"
+        )
+    logger.warning("Redis (%s) পাওয়া যায়নি; In-Memory ক্যাশ/channel layer ব্যবহার হচ্ছে।", REDIS_URL)
     REDIS_URL = ""
+elif not REDIS_URL and not DEBUG:
+    logger.warning("REDIS_URL সেট নেই: রেট-লিমিট ও WebSocket শুধু একটি প্রসেসের মধ্যে কাজ করবে।")
 
 # ক্যাশ (রেট-লিমিটের কাউন্টার): একাধিক ওয়ার্কারের জন্য Redis
 if REDIS_URL:
@@ -151,7 +164,13 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# আপনার সামনে কয়টি রিভার্স-প্রক্সি (nginx/Apache) আছে। DRF throttle ক্লায়েন্ট IP নেয় X-Forwarded-For থেকে;
+# এই সংখ্যা না দিলে ক্লায়েন্ট নিজে হেডার বানিয়ে IP-লিমিট এড়াতে পারে।
+# ডেভ = 0 (সরাসরি সংযোগ), প্রোডাকশন = 1 (একটি প্রক্সি)। সরাসরি ইন্টারনেটে খুললে 0 দিন।
+NUM_PROXIES = config("NUM_PROXIES", default=0 if DEBUG else 1, cast=int)
+
 REST_FRAMEWORK = {
+    "NUM_PROXIES": NUM_PROXIES,
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
     ],
