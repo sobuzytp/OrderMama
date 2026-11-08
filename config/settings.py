@@ -87,23 +87,32 @@ DATABASES = {
     )
 }
 
-# ক্যাশ (রেট-লিমিটের কাউন্টার): প্রোডাকশনে একাধিক ওয়ার্কারের জন্য Redis
-if config("REDIS_URL", default=""):
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": config("REDIS_URL"),
-        }
-    }
+# Redis: REDIS_URL দেওয়া থাকলেও সার্ভার সত্যিই চালু না থাকলে মেমরি-ক্যাশে নেমে যায় (cPanel-এ Redis থাকে না)।
+def _redis_alive(url):
+    if not url:
+        return False
+    try:
+        import redis
+        redis.Redis.from_url(url, socket_connect_timeout=1, socket_timeout=1).ping()
+        return True
+    except Exception:
+        return False
 
-# Channels: REDIS_URL থাকলে Redis, না থাকলে In-Memory (শুধু ডেভ)
+
 REDIS_URL = config("REDIS_URL", default="")
+if not _redis_alive(REDIS_URL):
+    REDIS_URL = ""
+
+# ক্যাশ (রেট-লিমিটের কাউন্টার): একাধিক ওয়ার্কারের জন্য Redis
+if REDIS_URL:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": REDIS_URL}}
+else:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+# Channels: Redis থাকলে Redis, না থাকলে In-Memory
 if REDIS_URL:
     CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {"hosts": [REDIS_URL]},
-        }
+        "default": {"BACKEND": "channels_redis.core.RedisChannelLayer", "CONFIG": {"hosts": [REDIS_URL]}}
     }
 else:
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
