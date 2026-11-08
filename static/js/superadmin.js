@@ -36,6 +36,20 @@
       catch (e) { err.textContent = e.message; }
     };
   }
+  async function giveTrial(r) {
+    const defaultDays = 7;
+    const raw = window.prompt(`“${r.name}”-কে কত দিনের ফ্রি ট্রায়াল দেবেন? (১–৩৬৫)`, String(defaultDays));
+    if (raw === null) return;
+    const days = Number(raw);
+    if (!Number.isInteger(days) || days < 1 || days > 365) { OM.toast("১ থেকে ৩৬৫ দিনের মধ্যে দিন লিখুন", "error"); return; }
+    const plan = plans.find((p) => p.code === (r.plan_code || "basic")) || plans.find((p) => p.is_active);
+    if (!plan) { OM.toast("আগে একটি সক্রিয় প্ল্যান তৈরি করুন", "error"); return; }
+    try {
+      await OM.api(`/api/sa/restaurants/${r.id}/trial/`, { method: "POST", json: { plan: plan.code, days } });
+      OM.toast("ফ্রি ট্রায়াল চালু হয়েছে", "ok"); loadR();
+    } catch (e) { OM.fail(e); }
+  }
+
   async function toggleBlock(r) {
     const to = !r.is_blocked;
     if (!await OM.confirm(to ? `“${r.name}” স্থগিত করলে কাস্টমার মেনু ও স্টাফ ড্যাশবোর্ড সাথে সাথে বন্ধ হবে।` : `“${r.name}” আবার চালু করবেন?`, { ok: to ? "স্থগিত করুন" : "চালু করুন", danger: to })) return;
@@ -54,6 +68,7 @@
         h("td", h("span.badge" + (badge[0] ? "." + badge[0] : ""), badge[1])),
         h("td", { style: "text-align:right;white-space:nowrap" },
           h("button.btn.sm" + (r.is_approved ? "" : ".primary"), { type: "button", onclick: () => approve(r) }, r.is_approved ? "মেয়াদ/প্ল্যান" : "অনুমোদন"), " ",
+          h("button.btn.sm", { type: "button", onclick: () => giveTrial(r) }, "ফ্রি ট্রায়াল"), " ",
           h("button.btn.sm" + (r.is_blocked ? "" : ".danger"), { type: "button", onclick: () => toggleBlock(r) }, r.is_blocked ? "চালু করুন" : "স্থগিত"))));
     });
   }
