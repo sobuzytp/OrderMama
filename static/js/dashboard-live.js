@@ -161,13 +161,21 @@
     } catch (e) { OM.fail(e); empty(); }
   }
   const conn = document.getElementById("conn");
-  let pollTimer = null;
+  let pollTimer = null, lastV = null, busy = false;
+  async function pulse() {
+    if (busy || document.hidden && lastV !== null && Math.random() < 0.5) return;
+    busy = true;
+    try {
+      const { v } = await OM.api("/api/d/pulse/");
+      if (v !== lastV) { const first = lastV === null; lastV = v; if (!first) await loadAll(true); }
+    } catch (e) {} finally { busy = false; }
+  }
   OM.socket("/ws/dashboard/", {
     onstate: (on, denied) => {
       conn.classList.toggle("on", on);
-      conn.lastChild.textContent = on ? "লাইভ সংযুক্ত" : "প্রতি ১০ সেকেন্ডে আপডেট হচ্ছে";
+      conn.lastChild.textContent = on ? "লাইভ সংযুক্ত" : "প্রতি ২ সেকেন্ডে আপডেট হচ্ছে";
       clearInterval(pollTimer);
-      if (!on) pollTimer = setInterval(() => loadAll(true), 10000);
+      if (!on) pollTimer = setInterval(pulse, 2000);
     },
     onopen: () => loadAll(),
     onmsg: (m) => {

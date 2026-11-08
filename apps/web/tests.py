@@ -442,3 +442,12 @@ class WebSocketTests(TransactionTestCase):
         self.assertEqual(ev["type"], "menu.change")
         for c in (cust, st):
             await c.disconnect()
+
+
+class PulseTests(Base):
+    def test_pulse_changes_on_new_order(self):
+        owner = self.login(staff(self.r, "owner"))
+        v1 = owner.get("/api/d/pulse/").json()["v"]
+        self.assertEqual(owner.get("/api/d/pulse/").json()["v"], v1)
+        self.assertEqual(self.order().status_code, 201)
+        self.assertNotEqual(owner.get("/api/d/pulse/").json()["v"], v1)

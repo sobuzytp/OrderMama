@@ -21,6 +21,7 @@ urlpatterns = [
     path("register/", sa.RegisterView.as_view()),
     # স্টাফ
     path("d/orders/", d.OrderListView.as_view()),
+    path("d/pulse/", d.PulseView.as_view()),
     path("d/orders/<int:pk>/status/", d.OrderStatusView.as_view()),
     path("d/service-requests/", d.ServiceRequestListView.as_view()),
     path("d/service-requests/<int:pk>/resolve/", d.ServiceRequestResolveView.as_view()),

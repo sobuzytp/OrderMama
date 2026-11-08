@@ -99,6 +99,18 @@ class OrderListView(TenantAPIView):
         return Response([order_payload(o) for o in qs])
 
 
+class PulseView(TenantAPIView):
+    """খুব হালকা পরিবর্তন-চেক (WebSocket ছাড়া হোস্টের জন্য): অর্ডার/সার্ভিস বদলালে 'v' বদলায়।"""
+    permission_classes = [OrderStaffPermission]
+    feature = "live_orders"
+
+    def get(self, request):
+        from django.db.models import Count, Max
+        o = Order.objects.filter(restaurant=self.restaurant).aggregate(n=Count("id"), m=Max("updated_at"))
+        sr = ServiceRequest.objects.filter(restaurant=self.restaurant, is_resolved=False).aggregate(n=Count("id"), m=Max("id"))
+        return Response({"v": f"{o['n']}|{o['m']}|{sr['n']}|{sr['m']}"})
+
+
 class OrderStatusView(TenantAPIView):
     permission_classes = [OrderStaffPermission]
     feature = "live_orders"
