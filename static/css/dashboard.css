@@ -320,3 +320,26 @@ dialog.modal::backdrop{background:#0A101799}
   #receipt .l{display:flex;justify-content:space-between;gap:8px}
   #receipt .b{font-weight:700;font-size:15px}
 }
+
+/* ---------- পরবর্তী পেজের ছোট সংযোজন ---------- */
+.tk.nofx{animation:none}
+.tk-act button.no{color:#FF9C92}
+.page-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--line-2);display:inline-grid;place-items:center;color:#9AA4AF}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-weight:600}
+.inline-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.inline-form .field{margin:0}
+.hint{color:var(--muted);font-size:.9rem}
+.bar-fallback{display:grid;gap:6px}
+.bar-fallback .row-b{display:grid;grid-template-columns:96px 1fr 90px;gap:10px;align-items:center;font-size:.9rem}
+.bar-fallback .bar{height:14px;background:var(--line-2);border-radius:7px;overflow:hidden}.bar-fallback .bar i{display:block;height:100%;background:var(--accent)}
+.btn.link{border:0;background:none;color:var(--accent-ink);text-decoration:underline;min-height:0;padding:2px}
+.sa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.pill-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.pill-list li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--soft)}
+.health{display:flex;gap:18px;flex-wrap:wrap}
+.health span{display:inline-flex;gap:7px;align-items:center}
+.health i{width:10px;height:10px;border-radius:50%;background:var(--ok)}.health .down i{background:var(--danger)}
+
+.pv{display:flex;flex-direction:column}.pv-bar{margin-top:auto;margin-bottom:12px}

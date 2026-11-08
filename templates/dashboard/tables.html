@@ -1,0 +1,16 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block content %}
+<div class="page-head"><div><h1>টেবিল ও QR কোড</h1><p>টেবিল সংখ্যা দিন, প্রতিটির জন্য আলাদা, অনুমান-অযোগ্য QR লিংক তৈরি হবে। প্রিন্ট করে টেবিলে রাখুন।</p></div></div>
+<section class="panel">
+  <div class="inline-form">
+    <div class="field"><label for="count">মোট টেবিল</label><input class="inp" id="count" type="number" min="1" max="200" style="width:120px" placeholder="যেমন ১০"></div>
+    <button class="btn primary" id="gen" type="button"><i data-lucide="layout-grid" class="i"></i>টেবিল তৈরি করুন</button>
+    {% if can_qr %}<a class="btn" id="allQr" href="/api/d/qr/" target="_blank" rel="noopener"><i data-lucide="file-down" class="i"></i>সব টেবিলের QR PDF</a>{% endif %}
+  </div>
+  {% if not can_qr %}<div class="banner warn" style="margin-top:14px;border-radius:10px"><i data-lucide="lock" class="i"></i><span>QR PDF জেনারেটর প্রিমিয়াম প্ল্যানের ফিচার।</span><a href="{% url 'dashboard:billing' %}">আপগ্রেড করুন</a></div>{% endif %}
+</section>
+<div id="tables" class="tables" style="margin-top:18px"></div>
+<script>window.CAN_QR = {{ can_qr|yesno:"true,false" }};</script>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/dashboard-tables.js' %}"></script>{% endblock %}

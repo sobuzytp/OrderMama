@@ -90,10 +90,16 @@ class MenuItemSerializer(serializers.ModelSerializer):
 
 
 class TableSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
     class Meta:
         model = Table
-        fields = ["id", "number", "label", "is_active"]
-        read_only_fields = ["number"]
+        fields = ["id", "number", "label", "is_active", "token", "url"]
+        read_only_fields = ["number", "token"]
+
+    def get_url(self, obj):
+        from django.conf import settings
+        return f"{settings.SITE_BASE_URL}/{obj.restaurant.slug}/{obj.token}/"
 
 
 class BrandingSerializer(serializers.ModelSerializer):

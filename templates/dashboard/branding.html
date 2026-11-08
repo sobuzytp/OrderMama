@@ -1,0 +1,30 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block content %}
+<div class="page-head"><div><h1>ব্র্যান্ডিং সেটিংস</h1><p>লোগো, রং আর থিম বদলালে কাস্টমারের মেনু আপনার নিজের ব্র্যান্ডের মতো দেখাবে। ডানে লাইভ প্রিভিউ।</p></div></div>
+<div class="brand-grid">
+  <form class="panel" id="form" enctype="multipart/form-data" novalidate>
+    <div class="field"><label for="name">রেস্টুরেন্টের নাম</label><input class="inp" id="name" name="name" maxlength="120" required></div>
+    <div class="grid2">
+      <div class="field"><label for="primary_color">প্রাইমারি রং</label><div class="color-row"><input type="color" id="primary_color" name="primary_color" aria-label="প্রাইমারি রং"><input class="inp" id="primary_hex" maxlength="7" aria-label="প্রাইমারি রং হেক্স" style="max-width:120px"></div></div>
+      <div class="field"><label for="secondary_color">ব্যাকগ্রাউন্ড রং</label><div class="color-row"><input type="color" id="secondary_color" name="secondary_color" aria-label="ব্যাকগ্রাউন্ড রং"><input class="inp" id="secondary_hex" maxlength="7" aria-label="ব্যাকগ্রাউন্ড রং হেক্স" style="max-width:120px"></div></div>
+      <div class="field"><label for="theme">থিম</label><select class="inp" id="theme" name="theme"><option value="light">লাইট</option><option value="dark">ডার্ক</option></select></div>
+      <div class="field"><label for="font_style">ফন্ট</label><select class="inp" id="font_style" name="font_style"><option value="hind">Hind Siliguri</option><option value="noto">Noto Sans Bengali</option></select></div>
+    </div>
+    <div class="field"><label for="welcome_message">ওয়েলকাম মেসেজ</label><input class="inp" id="welcome_message" name="welcome_message" maxlength="200"></div>
+    <div class="grid2">
+      <div class="field"><label for="logo">লোগো</label><input class="inp" type="file" id="logo" accept="image/png,image/jpeg,image/webp"><small>বর্গাকার ছবি ভালো দেখায়</small></div>
+      <div class="field"><label for="cover_image">কভার ছবি</label><input class="inp" type="file" id="cover_image" accept="image/png,image/jpeg,image/webp"><small>চওড়া ছবি দিন</small></div>
+      <div class="field"><label for="vat_percent">ভ্যাট (%)</label><input class="inp" type="number" id="vat_percent" name="vat_percent" min="0" max="100" step="0.01"></div>
+      <div class="field"><label for="service_charge_percent">সার্ভিস চার্জ (%)</label><input class="inp" type="number" id="service_charge_percent" name="service_charge_percent" min="0" max="100" step="0.01"></div>
+    </div>
+    <div class="err-text" id="err" role="alert"></div>
+    <div class="row"><button class="btn primary" type="submit"><i data-lucide="save" class="i"></i>সংরক্ষণ করুন</button><a class="btn" id="open" target="_blank" rel="noopener" href="/{{ restaurant.slug }}/">কাস্টমার মেনু দেখুন</a></div>
+  </form>
+  <div class="phone" aria-label="লাইভ প্রিভিউ"><div class="pv" id="pv"><div class="pv-cover" id="pvCover"><div class="pv-logo" id="pvLogo"></div></div>
+    <div class="pv-body"><h3 id="pvName"></h3><p class="pv-wel" id="pvWel"></p><div class="pv-chips"><span>বিরিয়ানি</span><span>কাবাব</span><span>ড্রিংকস</span></div>
+      <div class="pv-it"><span>কাচ্চি বিরিয়ানি</span><b>৳৩৮০</b></div><div class="pv-it"><span>মুরগির তেহারি</span><b>৳২২০</b></div><div class="pv-it"><span>লাচ্ছি</span><b>৳৯০</b></div></div>
+    <div class="pv-bar" id="pvBar"><span>২টি আইটেম</span><span>অর্ডার দিন</span></div></div></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/dashboard-branding.js' %}"></script>{% endblock %}

@@ -1,0 +1,31 @@
+{% load static %}<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ title }} · OrderMama সুপার অ্যাডমিন</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+</head>
+<body data-page="{{ sa_active }}" data-role="superadmin">
+<div class="shell">
+  <aside class="side">
+    <a class="brand" href="{% url 'superadmin:home' %}"><span class="brand-mark">অ</span><b>OrderMama</b></a>
+    <div class="rest-chip">সুপার অ্যাডমিন<small>{{ request.user.username }}</small></div>
+    <nav class="nav" aria-label="মূল মেনু">
+      <a href="{% url 'superadmin:home' %}" {% if sa_active == 'home' %}aria-current="page"{% endif %}><i data-lucide="activity" class="i"></i><span>ওভারভিউ</span></a>
+      <a href="{% url 'superadmin:restaurants' %}" {% if sa_active == 'restaurants' %}aria-current="page"{% endif %}><i data-lucide="store" class="i"></i><span>রেস্টুরেন্ট</span></a>
+      <a href="{% url 'superadmin:plans' %}" {% if sa_active == 'plans' %}aria-current="page"{% endif %}><i data-lucide="layers" class="i"></i><span>প্ল্যান</span></a>
+      <a href="{% url 'superadmin:payments' %}" {% if sa_active == 'payments' %}aria-current="page"{% endif %}><i data-lucide="banknote" class="i"></i><span>পেমেন্ট</span></a>
+    </nav>
+    <div class="side-foot"><span class="who">{{ request.user.username }}</span>
+      <form method="post" action="{% url 'dashboard:logout' %}">{% csrf_token %}<button class="link-btn" type="submit"><i data-lucide="log-out" class="i"></i><span>লগআউট</span></button></form></div>
+  </aside>
+  <div class="main"><div class="page">{% block content %}{% endblock %}</div></div>
+</div>
+<script src="https://unpkg.com/lucide@0.451.0/dist/umd/lucide.min.js"></script>
+<script src="{% static 'js/dashboard-common.js' %}"></script>
+<script src="{% static 'js/superadmin.js' %}"></script>
+</body>
+</html>

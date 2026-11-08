@@ -1,0 +1,9 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block content %}
+<div class="page-head"><div><h1>টেবিল ও বিল</h1><p>একই টেবিলের সবার অর্ডার এক বিলে জমা হয়। সব অর্ডার পরিবেশিত হলে পরিশোধ নিন।</p></div>
+  <span class="conn" id="conn" style="color:var(--muted)"><i></i><span>সংযোগ হচ্ছে…</span></span></div>
+<div id="bills" class="bills"></div>
+<div id="receipt"></div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/dashboard-bills.js' %}"></script>{% endblock %}

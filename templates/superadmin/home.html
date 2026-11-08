@@ -1,0 +1,10 @@
+{% extends "superadmin/base.html" %}
+{% block content %}
+<div class="page-head"><div><h1>প্ল্যাটফর্ম ওভারভিউ</h1><p>সব রেস্টুরেন্ট, মেয়াদ-সতর্কতা ও আয় এক নজরে।</p></div><div class="health" id="health" role="status"></div></div>
+<div class="stats" id="stats"></div>
+<div class="sa-grid">
+  <section class="panel"><div class="panel-head"><h2>মেয়াদ শেষ হচ্ছে (৩ দিনের মধ্যে)</h2></div><ul class="pill-list" id="expiring"></ul></section>
+  <section class="panel"><div class="panel-head"><h2>গ্রেস পিরিয়ডে</h2></div><ul class="pill-list" id="grace"></ul></section>
+  <section class="panel"><div class="panel-head"><h2>মেয়াদ শেষ — কাস্টমার মেনু বন্ধ</h2></div><ul class="pill-list" id="expired"></ul></section>
+</div>
+{% endblock %}

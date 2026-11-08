@@ -89,7 +89,9 @@ class Command(BaseCommand):
                     u.save()
         if not User.objects.filter(username="admin").exists():
             User.objects.create_superuser("admin", password="admin12345")
-        self.stdout.write(self.style.SUCCESS(
-            "ডেমো প্রস্তুত।\n  কাস্টমার : প্রতিটি টেবিলের লিংক: python manage.py shell -c "from apps.restaurants.models import Table; [print(t.restaurant.slug, t.number, t.token) for t in Table.objects.all()[:3]]"  → /<slug>/<token>/\n"
-            "  স্টাফ    : biryani_owner / biryani_manager / biryani_cashier / biryani_kitchen / biryani_waiter  (পাসওয়ার্ড demo12345)\n"
-            "  সুপার অ্যাডমিন: admin / admin12345"))
+        self.stdout.write(self.style.SUCCESS("ডেমো প্রস্তুত।"))
+        self.stdout.write("কাস্টমার লিংক (QR-এ যা থাকে):")
+        for t in Table.objects.filter(restaurant__slug__startswith="demo-", number__in=[1, 3]).select_related("restaurant"):
+            self.stdout.write(f"  {settings.SITE_BASE_URL}/{t.restaurant.slug}/{t.token}/   ({t.restaurant.name}, {t.display_name})")
+        self.stdout.write("স্টাফ: biryani_owner / biryani_manager / biryani_cashier / biryani_kitchen / biryani_waiter (পাসওয়ার্ড demo12345)")
+        self.stdout.write("সুপার অ্যাডমিন: admin / admin12345")

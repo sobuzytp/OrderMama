@@ -1,0 +1,7 @@
+{% extends "superadmin/base.html" %}
+{% block content %}
+<div class="page-head"><div><h1>রেস্টুরেন্ট</h1><p>নতুন আবেদন অনুমোদন করুন, মেয়াদ বাড়ান, নিয়ম ভাঙলে স্থগিত করুন।</p></div>
+  <div class="page-tools"><input class="inp" id="q" type="search" placeholder="নাম বা স্লাগ খুঁজুন" aria-label="খুঁজুন" style="width:240px">
+  <select class="inp" id="f" aria-label="ফিল্টার" style="width:170px"><option value="">সব</option><option value="pending">অনুমোদনের অপেক্ষায়</option><option value="active">সক্রিয়</option><option value="grace">গ্রেস</option><option value="expired">মেয়াদ শেষ</option><option value="blocked">স্থগিত</option></select></div></div>
+<section class="panel"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>রেস্টুরেন্ট</th><th>ওনার</th><th>প্ল্যান</th><th>মেয়াদ</th><th>অবস্থা</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></section>
+{% endblock %}

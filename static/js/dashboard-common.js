@@ -114,7 +114,7 @@
   };
   OM.fail = (e) => {
     OM.toast(e.message || "কাজটি করা যায়নি।", "bad");
-    if (e.status === 402) setTimeout(() => (location.href = "/dashboard/billing/"), 1800);
+    if (e.status === 402) setTimeout(() => (location.href = "/merchant/billing/"), 1800);
   };
 
   /* ---------- মডাল (native dialog) ---------- */

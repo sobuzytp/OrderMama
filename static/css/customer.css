@@ -385,3 +385,11 @@ main { max-width: 720px; margin: 0 auto; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- ডিসকাউন্ট ---------- */
+.dish-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.dish-price .old { font: 500 14.5px/1 var(--f-body); color: var(--ink-soft); }
+.dish-price .off-tag { font: 700 13px/1 var(--f-body); color: var(--on-primary); background: var(--primary); padding: 5px 8px; border-radius: 8px; }
+.ticket-btn .badge { animation: bump .32s var(--ease); }
+button[aria-busy="true"] { opacity: .6; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }

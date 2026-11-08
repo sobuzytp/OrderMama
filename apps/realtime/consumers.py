@@ -1,3 +1,5 @@
+from urllib.parse import parse_qs
+
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
@@ -13,7 +15,7 @@ class CustomerConsumer(AsyncJsonWebsocketConsumer):
 
     async def connect(self):
         qs = self.scope["query_string"].decode()
-        token = dict(p.split("=", 1) for p in qs.split("&") if "=" in p).get("token", "")
+        token = (parse_qs(qs).get("token") or [""])[0]  # URL-ডিকোড করা (: হয়ে আসে %3A)
         data = read_table_token(token)
         if not data or not await self._valid(data):
             await self.close(code=4403)

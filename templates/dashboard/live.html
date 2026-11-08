@@ -1,0 +1,14 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block main_class %}board-mode{% endblock %}
+{% block content %}
+<div class="board-bar">
+  <h1>লাইভ অর্ডার</h1>
+  <span class="conn" id="conn" role="status"><i></i><span>সংযোগ হচ্ছে…</span></span>
+  <button class="board-btn" id="soundBtn" type="button"><i data-lucide="volume-2" class="i"></i><span>সাউন্ড চালু করুন</span></button>
+</div>
+{% if request.user.role != 'kitchen' %}<div class="svc" id="svc" aria-live="polite"><span class="svc-empty">টেবিলের কোনো ডাক নেই</span></div>{% endif %}
+<div class="tabs-m" id="tabs"></div>
+<div class="board" id="board"></div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/dashboard-live.js' %}"></script>{% endblock %}

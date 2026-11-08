@@ -1,0 +1,12 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block content %}
+<div class="page-head"><div><h1>মেনু ম্যানেজমেন্ট</h1><p>খাবার যোগ করুন, দাম বদলান, আর এক ক্লিকে “স্টক নেই” করুন — কাস্টমারের স্ক্রিনে সাথে সাথে বদলে যাবে।</p></div>
+  <div class="page-tools"><button class="btn" id="addCat" type="button"><i data-lucide="folder-plus" class="i"></i>নতুন ক্যাটাগরি</button>
+  <button class="btn primary" id="addItem" type="button"><i data-lucide="plus" class="i"></i>নতুন খাবার</button></div></div>
+<div class="split">
+  <section class="panel" aria-label="ক্যাটাগরি"><div class="panel-head"><h2>ক্যাটাগরি</h2></div><ul class="cat-list" id="cats"></ul></section>
+  <section aria-label="খাবার"><div class="row" style="margin-bottom:14px"><input class="inp" id="search" type="search" placeholder="খাবার খুঁজুন" style="max-width:320px" aria-label="খাবার খুঁজুন"></div><div id="items" class="items"></div></section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/dashboard-menu.js' %}"></script>{% endblock %}

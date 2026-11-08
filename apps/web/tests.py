@@ -6,7 +6,7 @@ from channels.routing import URLRouter
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth.middleware import get_user  # noqa: F401
 from django.core.cache import cache
-from django.test import Client, TestCase, TransactionTestCase
+from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -372,6 +372,7 @@ class SuperAdminTests(Base):
         self.assertEqual(self.ac.get("/api/sa/stats/").json()["expiring"][0]["name"], self.r.name)
 
 
+@override_settings(DEBUG=True, PAYMENT_GATEWAY="mock")
 class PaymentPageTests(Base):
     def test_mock_payment_flow(self):
         owner = staff(self.r, R.OWNER)
@@ -399,8 +400,10 @@ class WebSocketTests(TransactionTestCase):
         from channels.db import database_sync_to_async
         from apps.orders.services import change_status, place_order
 
+        from urllib.parse import quote
         app = URLRouter(websocket_urlpatterns)
-        cust = WebsocketCommunicator(app, f"/ws/c/?token={make_table_token(self.t)}")
+        # ব্রাউজার encodeURIComponent করে পাঠায় — ডিকোড না হলে আগে 403 আসত
+        cust = WebsocketCommunicator(app, f"/ws/c/?token={quote(make_table_token(self.t), safe='')}")
         ok, _ = await cust.connect()
         self.assertTrue(ok)
         bad = WebsocketCommunicator(app, "/ws/c/?token=bogus")

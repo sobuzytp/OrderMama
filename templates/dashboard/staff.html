@@ -1,0 +1,8 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block content %}
+<div class="page-head"><div><h1>স্টাফ</h1><p>ম্যানেজার, ক্যাশিয়ার, কিচেন ও ওয়েটারের লগইন তৈরি করুন। কিচেন স্টাফ শুধু অর্ডার দেখবে, বিক্রির হিসাব নয়।</p></div>
+  <button class="btn primary" id="add" type="button"><i data-lucide="user-plus" class="i"></i>নতুন স্টাফ</button></div>
+<section class="panel"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>ইউজারনেম</th><th>নাম</th><th>রোল</th><th>অবস্থা</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/dashboard-staff.js' %}"></script>{% endblock %}

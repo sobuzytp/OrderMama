@@ -1,0 +1,18 @@
+# ডেভ/ছোট সার্ভারের জন্য: ওয়েব + PostgreSQL + Redis।  ব্যবহার: cp .env.example .env && docker compose up --build
+services:
+  web:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://ordermama:ordermama@db:5432/ordermama
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8000:8000"]
+    volumes: ["media:/app/media"]
+    depends_on: [db, redis]
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: ordermama, POSTGRES_PASSWORD: ordermama, POSTGRES_DB: ordermama }
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+  redis:
+    image: redis:7-alpine
+volumes: { pgdata: {}, media: {} }
