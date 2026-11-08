@@ -1,5 +1,25 @@
 {% extends "superadmin/base.html" %}
 {% block content %}
-<div class="page-head"><div><h1>সাবস্ক্রিপশন প্ল্যান</h1><p>বেসিক = শুধু মেনু; প্রিমিয়াম = লাইভ অর্ডার + QR জেনারেটর + ব্র্যান্ডিং। ফিচার ফ্ল্যাগ বদলালে সাথে সাথে কার্যকর হয়।</p></div></div>
+<div class="page-head"><div><h1>সাবস্ক্রিপশন প্ল্যান</h1><p>প্রতিটি প্ল্যানের দাম, মেয়াদ, গ্রেস ডে এবং ফিচার নির্ধারণ করুন। নিষ্ক্রিয় প্ল্যান নতুন করে কেনা বা বরাদ্দ করা যাবে না।</p></div></div>
+<section class="panel" style="margin-bottom:18px">
+  <div class="panel-head"><h2>নতুন প্ল্যান যোগ করুন</h2></div>
+  <form id="create-plan" class="form-grid">
+    {% csrf_token %}
+    <div class="grid2">
+      <div class="field"><label for="new-code">Plan Code (English)</label><input class="inp" id="new-code" name="code" required maxlength="20" pattern="[a-z0-9-]+" placeholder="starter"></div>
+      <div class="field"><label for="new-name">প্ল্যানের নাম</label><input class="inp" id="new-name" name="name" required maxlength="60" placeholder="Starter"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="new-price">মূল্য (৳)</label><input class="inp" id="new-price" name="price" type="number" min="0" step="0.01" required value="0"></div>
+      <div class="field"><label for="new-days">মেয়াদ (দিন)</label><input class="inp" id="new-days" name="duration_days" type="number" min="1" max="3650" required value="30"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="new-grace">Grace Days</label><input class="inp" id="new-grace" name="grace_days" type="number" min="0" max="365" required value="3"></div>
+      <div class="field"><label>ফিচার</label><div style="display:grid;gap:8px"><label><input type="checkbox" name="live_orders"> লাইভ অর্ডার ও KOT</label><label><input type="checkbox" name="qr_generator"> QR PDF জেনারেটর</label><label><input type="checkbox" name="branding"> ব্র্যান্ডিং</label></div></div>
+    </div>
+    <button class="btn primary" type="submit">প্ল্যান তৈরি করুন</button>
+    <div id="create-plan-error" class="err-text" role="alert"></div>
+  </form>
+</section>
 <div class="plans" id="plans"></div>
 {% endblock %}

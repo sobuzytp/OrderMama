@@ -8,23 +8,21 @@ from apps.restaurants.models import Restaurant
 
 
 class Plan(models.Model):
-    class Code(models.TextChoices):
-        BASIC = "basic", "বেসিক"
-        PREMIUM = "premium", "প্রিমিয়াম"
-
-    code = models.CharField(max_length=20, choices=Code.choices, unique=True)
+    # কোডটি ডাইনামিক রাখা হয়েছে, যাতে সুপার অ্যাডমিন নতুন প্ল্যান যোগ করতে পারেন।
+    code = models.SlugField(max_length=20, unique=True)
     name = models.CharField(max_length=60)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     duration_days = models.PositiveIntegerField(default=30)
+    grace_days = models.PositiveIntegerField(default=3)
 
-    # ফিচার ফ্ল্যাগ: বেসিক = শুধু মেনু; প্রিমিয়াম = লাইভ অর্ডার + QR জেনারেটর + ব্র্যান্ডিং
+    # প্রতিটি ফিচার আলাদাভাবে চালু/বন্ধ করা যায়।
     live_orders = models.BooleanField(default=False)
     qr_generator = models.BooleanField(default=False)
     branding = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ["price"]
+        ordering = ["price", "name"]
 
     def __str__(self):
         return f"{self.name} (৳{self.price})"
@@ -76,10 +74,11 @@ class Subscription(models.Model):
         return "grace" if self.in_grace else "expired"
 
     def extend(self, plan=None, days=None):
-        """পেমেন্টের পর রিনিউ: মেয়াদ থাকলে তার শেষ থেকে, শেষ হয়ে গেলে এখন থেকে যোগ হয়।"""
+        """মেয়াদ থাকলে তার শেষ থেকে, শেষ হয়ে গেলে এখন থেকে দিন যোগ হয়।"""
         if plan:
             self.plan = plan
-        days = days or self.plan.duration_days
+            self.grace_days = plan.grace_days
+        days = self.plan.duration_days if days is None else days
         base = max(self.end_date, timezone.now())
         self.end_date = base + timedelta(days=days)
         self.warning_sent_at = None
