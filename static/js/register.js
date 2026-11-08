@@ -56,7 +56,7 @@
         const msg = Array.isArray(v) ? v.join(" ") : String(v);
         if (p) { p.textContent = msg; shown = true; }
       }
-      if (!shown) formErr.textContent = "রেজিস্টার করা যায়নি। আবার চেষ্টা করুন।";
+      if (!shown) formErr.textContent = "রেজিস্টার করা যায়নি (সার্ভার কোড " + res.status + ")। " + (res.status >= 500 ? "সার্ভারের লগ/.env দেখুন।" : "আবার চেষ্টা করুন।");
     } catch (e) {
       formErr.textContent = "নেটওয়ার্ক সমস্যা। ইন্টারনেট দেখে আবার চেষ্টা করুন।";
     } finally {
