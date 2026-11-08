@@ -83,13 +83,42 @@
   }
 
   /* ---------- পেমেন্ট ---------- */
+  async function reviewPayment(p, action) {
+    if (action === "reject") {
+      const reason = await OM.prompt("পেমেন্ট প্রত্যাখ্যান", "প্রত্যাখ্যানের কারণ লিখুন", { ok: "প্রত্যাখ্যান করুন" });
+      if (reason === null) return;
+      if (!reason.trim()) { OM.toast("কারণ লেখা বাধ্যতামূলক।", "bad"); return; }
+      try { await OM.api(`/api/sa/payments/${p.id}/review/`, { method: "POST", json: { action, reason } }); OM.toast("পেমেন্ট প্রত্যাখ্যান করা হয়েছে", "ok"); loadPay(); }
+      catch (e) { OM.fail(e); }
+      return;
+    }
+    if (!await OM.confirm(`${p.restaurant} — ৳${p.amount} পেমেন্টটি যাচাই করে অনুমোদন করবেন? টাকা পাওয়া নিশ্চিত না হলে অনুমোদন দেবেন না।`, { ok: "অনুমোদন দিন" })) return;
+    try { await OM.api(`/api/sa/payments/${p.id}/review/`, { method: "POST", json: { action } }); OM.toast("পেমেন্ট অনুমোদিত; সাবস্ক্রিপশন আপডেট হয়েছে", "ok"); loadPay(); }
+    catch (e) { OM.fail(e); }
+  }
   async function loadPay() {
     try {
       const list = await OM.api("/api/sa/payments/"), rows = $("rows"); OM.clear(rows);
-      if (!list.length) rows.append(h("tr", h("td", { colspan: 7 }, OM.empty("banknote", "এখনো কোনো পেমেন্ট নেই"))));
-      list.forEach((p) => rows.append(h("tr", h("td", OM.date(p.created_at)), h("td", p.restaurant), h("td", p.plan), h("td.num", money(p.amount)), h("td", p.gateway),
-        h("td", h("span.badge" + (p.status === "paid" ? ".ok" : p.status === "pending" ? ".warn" : ".bad"), { pending: "অপেক্ষমাণ", paid: "সফল", failed: "ব্যর্থ", cancelled: "বাতিল" }[p.status] || p.status)), h("td.hint", p.tran_id))));
-    } catch (e) { OM.clear($("rows")).append(h("tr", h("td", { colspan: 7 }, OM.errorBox(e.message, loadPay)))); }
+      if (!list.length) rows.append(h("tr", h("td", { colspan: 9 }, OM.empty("banknote", "এখনো কোনো পেমেন্ট নেই"))));
+      list.forEach((p) => {
+        const labels = { pending: "অপেক্ষমাণ", submitted: "অনুমোদনের অপেক্ষায়", approved: "অনুমোদিত", rejected: "প্রত্যাখ্যাত", paid: "সফল", failed: "ব্যর্থ", cancelled: "বাতিল" };
+        const badge = p.status === "paid" || p.status === "approved" ? ".ok" : p.status === "submitted" || p.status === "pending" ? ".warn" : ".bad";
+        const actions = p.status === "submitted" && p.gateway === "manual"
+          ? h("div", h("button.btn.sm.primary", { type: "button", onclick: () => reviewPayment(p, "approve") }, "অনুমোদন"),
+              " ", h("button.btn.sm.danger", { type: "button", onclick: () => reviewPayment(p, "reject") }, "প্রত্যাখ্যান"))
+          : "—";
+        rows.append(h("tr",
+          h("td", OM.date(p.created_at)),
+          h("td", h("b", p.restaurant), p.sender_number ? h("div.hint", "Sender: " + p.sender_number) : null),
+          h("td", p.plan),
+          h("td.num", money(p.amount)),
+          h("td", p.method || p.gateway),
+          h("td", h("span.badge" + badge, labels[p.status] || p.status), p.rejection_reason ? h("div.hint", p.rejection_reason) : null),
+          h("td.hint", p.trx_id || p.tran_id),
+          h("td", actions)
+        ));
+      });
+    } catch (e) { OM.clear($("rows")).append(h("tr", h("td", { colspan: 9 }, OM.errorBox(e.message, loadPay)))); }
   }
 
   if (page === "home") home();
