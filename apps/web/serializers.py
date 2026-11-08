@@ -221,7 +221,7 @@ class PlanSerializer(serializers.ModelSerializer):
         model = Plan
         fields = ["id", "code", "name", "price", "duration_days", "live_orders",
                   "qr_generator", "branding", "is_active"]
-        read_only_fields = ["code", "name"]
+        read_only_fields = ["code"]
 
     def validate_price(self, value):
         if value < 0 or value > 99999999.99:
