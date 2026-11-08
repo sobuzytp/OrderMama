@@ -51,7 +51,7 @@ class Payment(models.Model):
 
             sub = Subscription.objects.select_for_update().filter(restaurant=pay.restaurant).first()
             if sub:
-                sub.extend(plan=pay.plan)
+                sub.extend(plan=pay.plan)  # পেমেন্ট হলে অটো রিঅ্যাক্টিভেট
             else:
                 from datetime import timedelta
 
@@ -59,6 +59,5 @@ class Payment(models.Model):
                     restaurant=pay.restaurant,
                     plan=pay.plan,
                     end_date=timezone.now() + timedelta(days=pay.plan.duration_days),
-                    grace_days=pay.plan.grace_days,
                 )
             return pay

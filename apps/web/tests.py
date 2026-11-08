@@ -350,47 +350,6 @@ class SuperAdminTests(Base):
         self.ac.post(f"/api/sa/restaurants/{r.pk}/unblock/", {}, content_type="application/json")
         self.assertEqual(self.c.get("/api/c/nutun/menu/").status_code, 200)
 
-    def test_plan_create_edit_disable_and_grace_days(self):
-        payload = {"code": "starter-plus", "name": "Starter Plus", "price": "799.00",
-                   "duration_days": 45, "grace_days": 5, "live_orders": True,
-                   "qr_generator": False, "branding": True, "is_active": True}
-        res = self.ac.post("/api/sa/plans/", payload, content_type="application/json")
-        self.assertEqual(res.status_code, 201, res.content)
-        plan = Plan.objects.get(code="starter-plus")
-        self.assertEqual(plan.grace_days, 5)
-        res = self.ac.patch(f"/api/sa/plans/{plan.pk}/",
-                            {"price": "899.00", "grace_days": 8, "is_active": False},
-                            content_type="application/json")
-        self.assertEqual(res.status_code, 200, res.content)
-        plan.refresh_from_db()
-        self.assertEqual(str(plan.price), "899.00")
-        self.assertEqual(plan.grace_days, 8)
-        self.assertFalse(plan.is_active)
-
-    def test_free_trial_creates_or_extends_subscription(self):
-        r, *_ = make_restaurant("trial-cafe", approved=False)
-        res = self.ac.post(f"/api/sa/restaurants/{r.pk}/trial/",
-                           {"plan": "premium", "days": 14}, content_type="application/json")
-        self.assertEqual(res.status_code, 200, res.content)
-        r.refresh_from_db()
-        self.assertTrue(r.is_approved)
-        self.assertFalse(r.is_blocked)
-        sub = r.subscription
-        self.assertEqual(sub.plan.code, "premium")
-        self.assertEqual(sub.grace_days, self.prem.grace_days)
-        self.assertGreater(sub.end_date, timezone.now() + timedelta(days=13))
-
-    def test_calendar_month_revenue_is_not_rolling_30_days(self):
-        now = timezone.now()
-        old = Payment.objects.create(restaurant=self.r, plan=self.prem, amount="120.00", gateway="mock",
-                                     status=Payment.Status.PAID, paid_at=now - timedelta(days=31))
-        current = Payment.objects.create(restaurant=self.r, plan=self.prem, amount="80.00", gateway="mock",
-                                         status=Payment.Status.PAID, paid_at=now)
-        stats = self.ac.get("/api/sa/stats/").json()
-        self.assertEqual(stats["revenue_month"], "80")
-        self.assertEqual(stats["revenue_30d"], "80")
-        self.assertEqual(stats["revenue_total"], "200")
-
     def test_reserved_slug_and_duplicate(self):
         base = {"restaurant_name": "x", "phone": "01712345678", "username": "u1", "password": "Strong-pass-77"}
         for slug in ("dashboard", "merchant", "super-admin", "cafe-a"):

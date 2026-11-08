@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import generics, serializers, status
+from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -48,15 +48,12 @@ class RestaurantListView(SuperBase):
 class StatsView(SuperBase):
     def get(self, request):
         now = timezone.now()
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        subs = list(Subscription.objects.select_related("restaurant", "plan"))
+        subs = Subscription.objects.select_related("restaurant", "plan")
         expiring = [s for s in subs if s.state == "expiring"]
         grace = [s for s in subs if s.state == "grace"]
         expired = [s for s in subs if s.state == "expired"]
-        paid = Payment.objects.filter(status=Payment.Status.PAID)
-        revenue = paid.aggregate(t=Sum("amount"))["t"] or 0
-        month = paid.filter(paid_at__gte=month_start, paid_at__lt=now).aggregate(t=Sum("amount"))["t"] or 0
-        last_30_days = paid.filter(paid_at__gte=now - timedelta(days=30)).aggregate(t=Sum("amount"))["t"] or 0
+        revenue = Payment.objects.filter(status="paid").aggregate(t=Sum("amount"))["t"] or 0
+        month = Payment.objects.filter(status="paid", paid_at__gte=now - timedelta(days=30)).aggregate(t=Sum("amount"))["t"] or 0
         return Response({
             "health": platform_health(),
             "restaurants": Restaurant.objects.count(),
@@ -66,9 +63,7 @@ class StatsView(SuperBase):
             "expiring": [{"name": s.restaurant.name, "days_left": s.days_left, "end_date": s.end_date.isoformat()} for s in expiring],
             "grace": [{"name": s.restaurant.name, "end_date": s.end_date.isoformat()} for s in grace],
             "expired": [{"name": s.restaurant.name, "end_date": s.end_date.isoformat()} for s in expired],
-            "revenue_total": str(revenue),
-            "revenue_month": str(month),
-            "revenue_30d": str(last_30_days),
+            "revenue_total": str(revenue), "revenue_30d": str(month),
         })
 
 
@@ -91,42 +86,13 @@ class ApproveView(SuperBase):
         if sub:
             sub.extend(plan=plan, days=days)
         else:
-            Subscription.objects.create(
-                restaurant=r, plan=plan, end_date=timezone.now() + timedelta(days=days),
-                grace_days=plan.grace_days,
-            )
+            Subscription.objects.create(restaurant=r, plan=plan, end_date=timezone.now() + timedelta(days=days))
+        r.refresh_from_db()
         return Response(restaurant_admin_row(Restaurant.objects.select_related("subscription__plan").get(pk=pk)))
 
 
 class ExtendView(ApproveView):
-    """মেয়াদ বাড়ানো/প্ল্যান বদল (হাতে)।"""
-
-
-class TrialView(SuperBase):
-    @transaction.atomic
-    def post(self, request, pk):
-        r = get_object_or_404(Restaurant, pk=pk)
-        plan = Plan.objects.filter(code=request.data.get("plan", "basic"), is_active=True).first()
-        if not plan:
-            return Response({"detail": "সক্রিয় প্ল্যান নির্বাচন করুন।"}, status=400)
-        try:
-            days = int(request.data.get("days", 7))
-        except (TypeError, ValueError):
-            return Response({"detail": "ট্রায়ালের দিনের সংখ্যা সঠিক নয়।"}, status=400)
-        if not 1 <= days <= 365:
-            return Response({"detail": "ফ্রি ট্রায়াল ১ থেকে ৩৬৫ দিনের মধ্যে হতে হবে।"}, status=400)
-        r.is_approved = True
-        r.is_blocked = False
-        r.save(update_fields=["is_approved", "is_blocked"])
-        sub = r.current_subscription
-        if sub:
-            sub.extend(plan=plan, days=days)
-        else:
-            Subscription.objects.create(
-                restaurant=r, plan=plan, end_date=timezone.now() + timedelta(days=days),
-                grace_days=plan.grace_days,
-            )
-        return Response(restaurant_admin_row(Restaurant.objects.select_related("subscription__plan").get(pk=pk)))
+    """মেয়াদ বাড়ানো/প্ল্যান বদল (হাতে)। অনুমোদনের লজিক একই।"""
 
 
 class BlockView(SuperBase):
@@ -147,12 +113,6 @@ class PlanListView(SuperBase):
     def get(self, request):
         return Response(PlanSerializer(Plan.objects.all(), many=True).data)
 
-    def post(self, request):
-        serializer = PlanSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        plan = serializer.save()
-        return Response(PlanSerializer(plan).data, status=status.HTTP_201_CREATED)
-
 
 class PlanDetailView(generics.UpdateAPIView):
     permission_classes = [IsPlatformAdmin]
@@ -167,9 +127,7 @@ class PaymentListView(SuperBase):
         return Response([
             {"tran_id": p.tran_id, "restaurant": p.restaurant.name, "plan": p.plan.name,
              "amount": str(p.amount), "gateway": p.gateway, "status": p.status,
-             "created_at": p.created_at.isoformat(),
-             "paid_at": p.paid_at.isoformat() if p.paid_at else None}
-            for p in qs
+             "created_at": p.created_at.isoformat()} for p in qs
         ])
 
 
