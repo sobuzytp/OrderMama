@@ -52,8 +52,8 @@ class StatsView(SuperBase):
         expiring = [s for s in subs if s.state == "expiring"]
         grace = [s for s in subs if s.state == "grace"]
         expired = [s for s in subs if s.state == "expired"]
-        revenue = Payment.objects.filter(status="paid").aggregate(t=Sum("amount"))["t"] or 0
-        month = Payment.objects.filter(status="paid", paid_at__gte=now - timedelta(days=30)).aggregate(t=Sum("amount"))["t"] or 0
+        revenue = Payment.objects.filter(status__in=["paid", "approved"]).aggregate(t=Sum("amount"))["t"] or 0
+        month = Payment.objects.filter(status__in=["paid", "approved"], paid_at__gte=now - timedelta(days=30)).aggregate(t=Sum("amount"))["t"] or 0
         return Response({
             "health": platform_health(),
             "restaurants": Restaurant.objects.count(),
@@ -125,10 +125,38 @@ class PaymentListView(SuperBase):
     def get(self, request):
         qs = Payment.objects.select_related("restaurant", "plan")[:200]
         return Response([
-            {"tran_id": p.tran_id, "restaurant": p.restaurant.name, "plan": p.plan.name,
-             "amount": str(p.amount), "gateway": p.gateway, "status": p.status,
+            {"id": p.pk, "tran_id": p.tran_id, "restaurant": p.restaurant.name, "plan": p.plan.name,
+             "amount": str(p.amount), "gateway": p.gateway, "method": p.method,
+             "sender_number": p.sender_number, "trx_id": p.trx_id,
+             "rejection_reason": p.rejection_reason, "status": p.status,
              "created_at": p.created_at.isoformat()} for p in qs
         ])
+
+
+
+class ManualPaymentReviewView(SuperBase):
+    @transaction.atomic
+    def post(self, request, pk):
+        payment = get_object_or_404(Payment.objects.select_for_update(), pk=pk, gateway="manual")
+        if payment.status != Payment.Status.SUBMITTED:
+            return Response({"detail": "এই পেমেন্ট আর পর্যালোচনার অপেক্ষায় নেই।"}, status=409)
+        action = request.data.get("action")
+        if action == "approve":
+            payment.mark_paid("MANUAL-" + (payment.trx_id or ""), final_status=Payment.Status.APPROVED)
+            payment.refresh_from_db()
+            payment.reviewed_at = timezone.now()
+            payment.save(update_fields=["reviewed_at"])
+            return Response({"status": payment.status})
+        if action == "reject":
+            reason = str(request.data.get("reason", "")).strip()
+            if not reason:
+                return Response({"detail": "প্রত্যাখ্যানের কারণ লিখুন।"}, status=400)
+            payment.status = Payment.Status.REJECTED
+            payment.rejection_reason = reason[:500]
+            payment.reviewed_at = timezone.now()
+            payment.save(update_fields=["status", "rejection_reason", "reviewed_at"])
+            return Response({"status": payment.status})
+        return Response({"detail": "সঠিক সিদ্ধান্ত নির্বাচন করুন।"}, status=400)
 
 
 class RegisterView(APIView):

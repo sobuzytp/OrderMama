@@ -41,4 +41,5 @@ urlpatterns = [
     path("sa/plans/", sa.PlanListView.as_view()),
     path("sa/plans/<int:pk>/", sa.PlanDetailView.as_view()),
     path("sa/payments/", sa.PaymentListView.as_view()),
+    path("sa/payments/<int:pk>/review/", sa.ManualPaymentReviewView.as_view()),
 ]

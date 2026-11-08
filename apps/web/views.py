@@ -149,6 +149,12 @@ def billing(request):
         request, "সাবস্ক্রিপশন",
         plans=Plan.objects.filter(is_active=True),
         payments=Payment.objects.filter(restaurant=r)[:15],
+        payment_numbers={
+            "bkash": settings.MANUAL_BKASH_NUMBER,
+            "nagad": settings.MANUAL_NAGAD_NUMBER,
+            "rocket": settings.MANUAL_ROCKET_NUMBER,
+        },
+        payment_gateway=settings.PAYMENT_GATEWAY,
     ))
 
 
