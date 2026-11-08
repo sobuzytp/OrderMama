@@ -1,0 +1,12 @@
+---
+# cPanel "Deploy HEAD Commit" — রিপো ফোল্ডারটাই অ্যাপ ফোল্ডার, তাই ফাইল কপি লাগে না।
+# প্রথমবারের আগে সার্ভারে .env বানিয়ে রাখুন (README-র "cPanel" অংশ দেখুন)।
+deployment:
+  tasks:
+    - export PY=/home/lxhytteluf/virtualenv/ordermama.notte.top/3.11/bin/python
+    - $PY -m pip install -r requirements.txt
+    - $PY manage.py migrate --noinput
+    - $PY manage.py seed_plans
+    - $PY manage.py collectstatic --noinput
+    - /bin/mkdir -p tmp
+    - /bin/touch tmp/restart.txt

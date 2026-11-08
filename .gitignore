@@ -10,3 +10,6 @@ venv/
 .idea/
 .vscode/
 *.log
+tmp/
+stderr.log
+passenger.log

@@ -54,6 +54,13 @@ SQLite থেকে ডেটা নিতে: `python manage.py dumpdata --natu
 - QR PDF-এ বাংলা লেখার জন্য সার্ভারে বাংলা-সমর্থিত ফন্ট লাগে (Docker ইমেজে FreeSans আছে; নিজের ফন্ট দিতে `QR_FONT_PATH`)।
 - ফন্ট/আইকন Google Fonts ও unpkg CDN থেকে আসে; ইন্টারনেট ছাড়া ব্যবহার করলে নিজের সার্ভারে হোস্ট করুন।
 
+## cPanel (Passenger) ডিপ্লয়
+শেয়ার্ড হোস্টিং-এ মেনু, অর্ডার, ড্যাশবোর্ড সব চলে; লাইভ আপডেট ১০ সেকেন্ডের পোলিংয়ে হয় (WebSocket নয়)।
+1. cPanel → Setup Python App (Python 3.11, অ্যাপ রুট = রিপোর ফোল্ডার, `passenger_wsgi.py`); Git Version Control থেকে রিপো ক্লোন।
+2. সার্ভারে `.env` বানান: `DJANGO_DEBUG=False`, লম্বা `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS=yourdomain.com`, `CSRF_TRUSTED_ORIGINS=https://yourdomain.com`, `SITE_BASE_URL=https://yourdomain.com`, `SERVE_MEDIA=True`।
+3. **পুরনো db.sqlite3 থাকলে সরিয়ে ফেলুন** (অন্য প্রজেক্টের টেবিল থাকলে মাইগ্রেশন মিলবে না): `mv db.sqlite3 db_old.sqlite3`।
+4. `.cpanel.yml` ডেপ্লয়ে নিজে `pip install`, `migrate`, `collectstatic` চালিয়ে অ্যাপ রিস্টার্ট করে। প্রথমবার ম্যানুয়ালি: `python manage.py createsuperuser`।
+
 ## টেস্ট
 ```bash
 python manage.py test apps    # ৩২টি টেস্ট: অর্ডার ফ্লো, রোল, টেন্যান্ট আইসোলেশন, সাবস্ক্রিপশন, পেমেন্ট, WebSocket
