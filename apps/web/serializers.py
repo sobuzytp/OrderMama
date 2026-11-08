@@ -217,10 +217,17 @@ class RegisterSerializer(serializers.Serializer):
 
 # ---------- সুপার অ্যাডমিন ----------
 class PlanSerializer(serializers.ModelSerializer):
+    code = serializers.SlugField(max_length=20, required=True)
+
     class Meta:
         model = Plan
         fields = ["id", "code", "name", "price", "duration_days", "grace_days",
                   "live_orders", "qr_generator", "branding", "is_active"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance is not None:
+            self.fields["code"].read_only = True
 
     def validate_code(self, value):
         value = value.lower().strip()
