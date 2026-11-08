@@ -1,5 +1,5 @@
 {% extends "superadmin/base.html" %}
 {% block content %}
-<div class="page-head"><div><h1>পেমেন্ট</h1><p>সাবস্ক্রিপশন ফি-র সর্বশেষ ২০০টি লেনদেন।</p></div></div>
-<section class="panel"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>তারিখ</th><th>রেস্টুরেন্ট</th><th>প্ল্যান</th><th>পরিমাণ</th><th>গেটওয়ে</th><th>অবস্থা</th><th>ট্রানজেকশন</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<div class="page-head"><div><h1>পেমেন্ট</h1><p>Pending Manual Payment যাচাই করুন। TrxID, Sender Number ও জমার তথ্য মিলিয়ে তারপর অনুমোদন দিন।</p></div></div>
+<section class="panel"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>তারিখ</th><th>রেস্টুরেন্ট / Sender</th><th>প্ল্যান</th><th>পরিমাণ</th><th>মাধ্যম</th><th>অবস্থা / নোট</th><th>TrxID</th><th>অ্যাকশন</th></tr></thead><tbody id="rows"></tbody></table></div></section>
 {% endblock %}
