@@ -1,7 +1,7 @@
 {% extends "dashboard/base.html" %}
 {% load static %}
 {% block content %}
-<div class="page-head"><div><h1>সাবস্ক্রিপশন</h1><p>প্ল্যান ও মেয়াদ দেখুন, রিনিউ করুন। পেমেন্ট হলেই সঙ্গে সঙ্গে সব আবার চালু হয়ে যায়।</p></div></div>
+<div class="page-head"><div><h1>সাবস্ক্রিপশন</h1><p>প্ল্যান বেছে নিন এবং Manual Payment অথবা অনলাইন পেমেন্টে রিনিউ করুন।</p></div></div>
 {% if sub %}
 <div class="state-card {{ sub.state }}">
   <div><span class="hint">বর্তমান প্ল্যান</span><div class="big">{{ sub.plan.name }}</div></div>
@@ -22,15 +22,41 @@
       <li class="{% if not p.qr_generator %}no{% endif %}"><i data-lucide="{% if p.qr_generator %}check{% else %}x{% endif %}" class="i"></i>QR কোড PDF জেনারেটর</li>
       <li class="{% if not p.branding %}no{% endif %}"><i data-lucide="{% if p.branding %}check{% else %}x{% endif %}" class="i"></i>নিজস্ব ব্র্যান্ডিং ও থিম</li>
     </ul>
-    <button class="btn primary pay" type="button" data-plan="{{ p.id }}" style="margin-top:auto">{% if sub and sub.plan_id == p.id %}রিনিউ করুন{% else %}এই প্ল্যানে যান{% endif %}</button>
+    {% if payment_gateway != "manual" %}
+    <button class="btn primary pay" type="button" data-plan="{{ p.id }}" data-gateway="{% if payment_gateway == 'both' %}sslcommerz{% else %}{{ payment_gateway }}{% endif %}" style="margin-top:auto">{% if sub and sub.plan_id == p.id %}অনলাইনে রিনিউ{% else %}অনলাইনে পেমেন্ট{% endif %}</button>
+    {% endif %}
+    {% if payment_gateway == "manual" or payment_gateway == "both" %}
+    <button class="btn manual-pay" type="button" data-plan="{{ p.id }}" style="margin-top:8px">Send Money করে পেমেন্ট</button>
+    {% endif %}
   </article>
   {% endfor %}
 </div>
+{% if payment_gateway == "manual" or payment_gateway == "both" %}
+<section class="panel" id="manualPayment" hidden style="margin-top:20px">
+  <h2>Manual Payment জমা দিন</h2>
+  <p class="hint">নিচের নম্বরে Send Money করে TrxID ও যে নম্বর থেকে টাকা পাঠিয়েছেন সেটি দিন। অ্যাডমিন যাচাই করার পর সাবস্ক্রিপশন চালু হবে।</p>
+  <div class="grid2" style="margin:12px 0">
+    {% if payment_numbers.bkash %}<div><b>bKash Personal</b><div class="num">{{ payment_numbers.bkash }}</div></div>{% endif %}
+    {% if payment_numbers.nagad %}<div><b>Nagad Personal</b><div class="num">{{ payment_numbers.nagad }}</div></div>{% endif %}
+    {% if payment_numbers.rocket %}<div><b>Rocket Personal</b><div class="num">{{ payment_numbers.rocket }}</div></div>{% endif %}
+  </div>
+  <form id="manualPaymentForm">
+    {% csrf_token %}
+    <input type="hidden" name="plan" id="manualPlan">
+    <div class="field"><label for="manualMethod">যে মাধ্যমে টাকা পাঠিয়েছেন</label><select class="inp" id="manualMethod" name="method" required><option value="bkash">bKash</option><option value="nagad">Nagad</option><option value="rocket">Rocket</option></select></div>
+    <div class="field"><label for="senderNumber">যে নম্বর থেকে Send Money করেছেন</label><input class="inp" id="senderNumber" name="sender_number" inputmode="numeric" maxlength="13" placeholder="01XXXXXXXXX" required></div>
+    <div class="field"><label for="trxId">Transaction ID (TrxID)</label><input class="inp" id="trxId" name="trx_id" maxlength="100" autocomplete="off" required></div>
+    <button class="btn primary" type="submit" id="manualSubmit">পেমেন্ট যাচাইয়ের জন্য জমা দিন</button>
+    <button class="btn" type="button" id="manualClose">বন্ধ করুন</button>
+  </form>
+</section>
+{% endif %}
 <h2 style="margin:24px 0 12px">পেমেন্টের ইতিহাস</h2>
 <section class="panel">
-  {% if payments %}<div class="tbl-wrap"><table class="tbl"><thead><tr><th>তারিখ</th><th>প্ল্যান</th><th>পরিমাণ</th><th>অবস্থা</th><th>ট্রানজেকশন</th></tr></thead><tbody>
+  {% if payments %}<div class="tbl-wrap"><table class="tbl"><thead><tr><th>তারিখ</th><th>প্ল্যান</th><th>পরিমাণ</th><th>অবস্থা</th><th>মাধ্যম / TrxID</th><th>নোট</th></tr></thead><tbody>
     {% for p in payments %}<tr><td>{{ p.created_at|date:"j M Y" }}</td><td>{{ p.plan.name }}</td><td class="num">৳{{ p.amount|floatformat:"-2" }}</td>
-      <td><span class="badge {% if p.status == 'paid' %}ok{% elif p.status == 'pending' %}warn{% else %}bad{% endif %}">{{ p.get_status_display }}</span></td><td class="hint">{{ p.tran_id }}</td></tr>{% endfor %}
+      <td><span class="badge {% if p.status == 'paid' or p.status == 'approved' %}ok{% elif p.status == 'pending' or p.status == 'submitted' %}warn{% else %}bad{% endif %}">{{ p.get_status_display }}</span></td>
+      <td class="hint">{{ p.get_method_display|default:p.gateway }}{% if p.trx_id %}<div>{{ p.trx_id }}</div>{% endif %}</td><td class="hint">{{ p.rejection_reason }}</td></tr>{% endfor %}
   </tbody></table></div>{% else %}<div class="empty"><i data-lucide="receipt" class="i"></i><b>এখনো কোনো পেমেন্ট নেই</b><p>প্রথম পেমেন্ট করলে এখানে তালিকা দেখা যাবে।</p></div>{% endif %}
 </section>
 <div class="err-text" id="payErr" role="alert" style="margin-top:12px"></div>
