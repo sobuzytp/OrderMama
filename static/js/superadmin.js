@@ -12,7 +12,7 @@
       OM.clear($("health")).append(ok(d.health.database, "ডেটাবেজ"), ok(d.health.realtime, "রিয়েল-টাইম"));
       const c = (l, v, s) => h("div.stat", h("span", l), h("b.num", v), h("em", s || ""));
       OM.clear($("stats")).append(c("মোট রেস্টুরেন্ট", bn(d.restaurants), bn(d.active) + "টি সক্রিয়"), c("অনুমোদনের অপেক্ষায়", bn(d.pending), d.pending ? "পর্যালোচনা দরকার" : "সব ঠিক আছে"),
-        c("আয় (৩০ দিন)", money(d.revenue_30d), "মোট " + money(d.revenue_total)), c("স্থগিত", bn(d.blocked)));
+        c("এই মাসের আয়", money(d.revenue_month), "গত ৩০ দিন " + money(d.revenue_30d)), c("স্থগিত", bn(d.blocked)));
       const fill = (id, list, f, empty) => { const ul = $(id); OM.clear(ul); if (!list.length) ul.append(h("li", h("span.hint", empty))); list.forEach((x) => ul.append(h("li", h("b", x.name), h("span.hint", f(x))))); };
       fill("expiring", d.expiring, (x) => (x.days_left <= 0 ? "আজই শেষ" : bn(x.days_left) + " দিন বাকি"), "কেউ নেই");
       fill("grace", d.grace, (x) => OM.date(x.end_date) + " এ শেষ হয়েছে", "কেউ নেই");
