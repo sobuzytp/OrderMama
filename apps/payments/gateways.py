@@ -1,4 +1,4 @@
-"""পেমেন্ট গেটওয়ে: mock (ডেভ) ও SSLCommerz (বিকাশ/নগদ/রকেট সহ)।"""
+"""পেমেন্ট গেটওয়ে: mock, manual এবং SSLCommerz।"""
 import json
 import urllib.parse
 import urllib.request
@@ -28,6 +28,13 @@ class MockGateway:
 
     def initiate(self, payment, user):
         return reverse("payments:mock", args=[payment.tran_id])
+
+
+class ManualGateway:
+    name = "manual"
+
+    def initiate(self, payment, user):
+        return reverse("dashboard:billing")
 
 
 class SSLCommerzGateway:
@@ -68,7 +75,6 @@ class SSLCommerzGateway:
         return res["GatewayPageURL"]
 
     def validate(self, payment, val_id):
-        """সার্ভার-সাইড যাচাই: নিজের টাকা-পরিমাণ ও tran_id মিলিয়ে দেখি।"""
         res = _get(
             self.base + "/validator/api/validationserverAPI.php",
             {
@@ -87,11 +93,16 @@ class SSLCommerzGateway:
         return ok, res
 
 
-def get_gateway():
-    if settings.PAYMENT_GATEWAY == "sslcommerz":
+def get_gateway(name=None):
+    selected = name or settings.PAYMENT_GATEWAY
+    if selected == "manual":
+        return ManualGateway()
+    if selected == "sslcommerz":
         return SSLCommerzGateway()
-    if settings.PAYMENT_GATEWAY == "mock":
+    if selected == "mock":
         if not settings.DEBUG:
             raise GatewayError("প্রোডাকশনে mock গেটওয়ে চলবে না।")
         return MockGateway()
+    if selected == "both":
+        raise GatewayError("পেমেন্ট পদ্ধতি নির্বাচন করুন।")
     raise GatewayError("অজানা পেমেন্ট গেটওয়ে।")
