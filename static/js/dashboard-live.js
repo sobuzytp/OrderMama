@@ -148,20 +148,28 @@
   }
 
   /* ---------- লোড ও লাইভ ---------- */
-  async function loadAll() {
+  async function loadAll(announce) {
     try {
       const list = await OM.api("/api/d/orders/");
+      const fresh = announce === true ? list.filter((o) => !orders.has(o.id) && o.status === "pending") : [];
       const keep = new Set(list.map((o) => o.id));
       [...cards.keys()].forEach((id) => { if (!keep.has(id)) { cards.get(id).remove(); cards.delete(id); orders.delete(id); } });
       list.forEach((o) => upsert(o, false));
+      if (fresh.length) { chime(); setTab("new"); }
       empty();
       if (svc) { const rs = await OM.api("/api/d/service-requests/"); reqs.clear(); rs.forEach((r) => reqs.set(r.id, r)); drawSvc(); }
     } catch (e) { OM.fail(e); empty(); }
   }
   const conn = document.getElementById("conn");
+  let pollTimer = null;
   OM.socket("/ws/dashboard/", {
-    onstate: (on, denied) => { conn.classList.toggle("on", on); conn.lastChild.textContent = on ? "লাইভ সংযুক্ত" : denied ? "লাইভ সংযোগ অনুমোদিত নয়" : "সংযোগ ছিন্ন — আবার চেষ্টা চলছে…"; },
-    onopen: loadAll,
+    onstate: (on, denied) => {
+      conn.classList.toggle("on", on);
+      conn.lastChild.textContent = on ? "লাইভ সংযুক্ত" : "প্রতি ১০ সেকেন্ডে আপডেট হচ্ছে";
+      clearInterval(pollTimer);
+      if (!on) pollTimer = setInterval(() => loadAll(true), 10000);
+    },
+    onopen: () => loadAll(),
     onmsg: (m) => {
       if (m.type === "order.new") { upsert(m.order, true); chime(); setTab("new"); }
       else if (m.type === "order.update") upsert(m.order, false);
