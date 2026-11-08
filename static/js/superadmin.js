@@ -67,7 +67,7 @@
     try {
       const list = await OM.api("/api/sa/plans/"), box = $("plans"); OM.clear(box);
       list.forEach((p) => {
-        const price = h("input.inp", { type: "number", min: 0, step: "0.01", value: p.price, id: "pp" + p.id }), days = h("input.inp", { type: "number", min: 1, value: p.duration_days, id: "pd" + p.id });
+        const price = h("input.inp", { type: "number", min: 0, max: 99999999.99, step: "0.01", value: p.price, id: "pp" + p.id }), days = h("input.inp", { type: "number", min: 1, max: 3650, value: p.duration_days, id: "pd" + p.id });
         const flag = (k, l) => h("label.switch", h("input", { type: "checkbox", checked: p[k], dataset: { k } }), h("i"), l);
         const form = h("div", h("div.grid2", h("div.field", h("label", { for: "pp" + p.id }, "দাম (৳)"), price), h("div.field", h("label", { for: "pd" + p.id }, "মেয়াদ (দিন)"), days)),
           h("div", { style: "display:grid;gap:10px;margin-bottom:14px" }, flag("live_orders", "লাইভ অর্ডার ও KOT"), flag("qr_generator", "QR PDF জেনারেটর"), flag("branding", "ব্র্যান্ডিং"), flag("is_active", "বিক্রির জন্য চালু")));
