@@ -5,6 +5,19 @@
   const STATE = { active: ["ok", "সক্রিয়"], expiring: ["warn", "শিগগির শেষ"], grace: ["warn", "গ্রেস পিরিয়ড"], expired: ["bad", "মেয়াদ শেষ"], none: ["", "সাবস্ক্রিপশন নেই"] };
 
   /* ---------- ওভারভিউ ---------- */
+  function drawIncome(list) {
+    const box = $("income");
+    if (!box) return;
+    OM.clear(box);
+    if (!list.length) { box.append(OM.empty("banknote", "এখনো আয়ের রেকর্ড নেই", "পেমেন্ট অনুমোদন হলে এখানে মাসিক আয় দেখা যাবে।")); OM.refreshIcons(); return; }
+    const max = Math.max(1, ...list.map((m) => Number(m.total) || 0));
+    list.forEach((m) => {
+      const [y, mo] = m.label.split("-");
+      const name = new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString("bn-BD", { month: "long", year: "numeric" });
+      box.append(h("div.row-b", h("span", name), h("div.bar", h("i", { style: `width:${((Number(m.total) || 0) / max) * 100}%` })),
+        h("b.num", money(m.total), h("em.hint", { style: "display:block;font-weight:400" }, bn(m.count) + "টি পেমেন্ট"))));
+    });
+  }
   async function home() {
     try {
       const d = await OM.api("/api/sa/stats/");
@@ -13,6 +26,8 @@
       const c = (l, v, s) => h("div.stat", h("span", l), h("b.num", v), h("em", s || ""));
       OM.clear($("stats")).append(c("মোট রেস্টুরেন্ট", bn(d.restaurants), bn(d.active) + "টি সক্রিয়"), c("অনুমোদনের অপেক্ষায়", bn(d.pending), d.pending ? "পর্যালোচনা দরকার" : "সব ঠিক আছে"),
         c("আয় (৩০ দিন)", money(d.revenue_30d), "মোট " + money(d.revenue_total)), c("স্থগিত", bn(d.blocked)));
+      drawIncome(d.monthly_income || []);
+      if (d.pending_payments > 0) $("payAlert").hidden = false, $("payAlertCount").textContent = bn(d.pending_payments);
       const fill = (id, list, f, empty) => { const ul = $(id); OM.clear(ul); if (!list.length) ul.append(h("li", h("span.hint", empty))); list.forEach((x) => ul.append(h("li", h("b", x.name), h("span.hint", f(x))))); };
       fill("expiring", d.expiring, (x) => (x.days_left <= 0 ? "আজই শেষ" : bn(x.days_left) + " দিন বাকি"), "কেউ নেই");
       fill("grace", d.grace, (x) => OM.date(x.end_date) + " এ শেষ হয়েছে", "কেউ নেই");

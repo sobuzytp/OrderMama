@@ -13,3 +13,6 @@ venv/
 tmp/
 stderr.log
 passenger.log
+logs/
+backups/
+*.gz

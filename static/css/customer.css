@@ -166,6 +166,27 @@ main { max-width: 720px; margin: 0 auto; }
 .is-out .dish-media img, .is-out .dish-media .ph { filter: grayscale(1); opacity: .55; }
 .is-out .dish-name, .is-out .dish-price { color: var(--ink-soft); }
 .out-tag { height: 48px; padding: 0 16px; display: inline-flex; align-items: center; border-radius: 999px; background: var(--line); color: var(--ink-soft); font-weight: 600; font-size: 15px; white-space: nowrap; }
+
+/* ---------- খাবারের ব্যাজ (জনপ্রিয় / নতুন) ---------- */
+.tag {
+  position: absolute; top: 7px; left: 7px; z-index: 2; padding: 3px 9px; border-radius: 999px;
+  font: 700 11.5px/1.5 var(--f-body); letter-spacing: .01em; pointer-events: none;
+  box-shadow: 0 4px 10px -4px rgb(0 0 0 / .45);
+}
+.tag-popular { background: var(--primary); color: var(--on-primary); }
+.tag-new { background: var(--veg); color: #fff; }
+
+/* ---------- “ফোনে রাখুন” (PWA) ---------- */
+.install-btn { margin-left: auto; align-self: flex-start; gap: 6px; font-size: 14px; padding: 8px 12px; height: auto; min-height: 40px; }
+.install-btn[hidden] { display: none; }
+@media (max-width: 420px) { .install-btn span { display: none; } .install-btn { padding: 8px; } }
+
+/* ---------- পুরনো অর্ডার আবার ---------- */
+.reorder { display: grid; gap: 8px; margin-top: 10px; }
+.reorder-row { display: flex; align-items: center; gap: 10px; }
+.reorder-row .n { flex: 1; font-weight: 600; min-width: 0; }
+.reorder-row .q { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.reorder-btn { width: 100%; }
 .empty-state { text-align: center; padding: 48px 12px; color: var(--ink-soft); }
 .empty-state .empty-art { color: var(--tint-2); }
 .empty-state h3 { color: var(--ink); font-size: 20px; margin: 10px 0 4px; }
@@ -325,6 +346,7 @@ main { max-width: 720px; margin: 0 auto; }
 .wordmark { font: 800 24px/1 var(--f-display); color: var(--ink); text-decoration: none; }
 .head-links { display: flex; align-items: center; gap: 14px; }
 .head-link { color: var(--ink); text-decoration: none; font-weight: 500; padding: 12px 4px; }
+button.head-link { background: none; border: 0; cursor: pointer; font: inherit; }
 .lead { color: var(--ink-soft); font-size: 18px; max-width: 52ch; }
 .center-card { min-height: 100dvh; display: grid; align-content: center; justify-items: center; text-align: center; gap: 14px; padding: 24px; margin: 0 auto; }
 .center-card h1 { font-size: 28px; }

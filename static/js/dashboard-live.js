@@ -78,6 +78,27 @@
     const cls = o.status === "served" ? "" : m >= 10 ? ".w2" : m >= 5 ? ".w1" : "";
     return h("span.tk-time" + cls, { dataset: { t: o.created_at } }, bn(m) + " মি");
   }
+  /* ---------- KOT (কিচেন টিকেট) প্রিন্ট ---------- */
+  function printKot(o) {
+    let box = document.getElementById("kot");
+    if (!box) { box = h("div#kot", { "aria-hidden": "true" }); document.body.append(box); }
+    const rest = (document.querySelector(".rest-chip") || {}).firstChild;
+    OM.clear(box).append(
+      h("h2", rest ? rest.textContent.trim() : "KOT"),
+      h("div.c", "কিচেন টিকেট · #" + bn(o.id)),
+      h("div.c", "টেবিল " + bn(o.table) + " · " + OM.dateTime(o.created_at)),
+      h("hr"),
+      h("ul.kot-items", o.items.map((i) => h("li", h("b", bn(i.quantity) + "×"), h("span", i.name),
+        i.note ? h("em", "নোট: " + i.note) : null))),
+      o.note ? h("div.kot-note", "অর্ডার নোট: " + o.note) : null,
+      h("hr"),
+      h("div.c.kot-cust", o.customer_name),
+      h("div.c", "— " + bn(o.items.reduce((a, i) => a + i.quantity, 0)) + " আইটেম —"));
+    document.body.classList.add("print-kot");
+    window.print();
+    setTimeout(() => document.body.classList.remove("print-kot"), 400);
+  }
+
   async function act(o, to, btn) {
     let reason = "";
     if (to === "rejected") {
@@ -95,6 +116,9 @@
     if (["pending", "accepted", "preparing"].includes(o.status) && ALLOW.rejected.includes(role)) {
       const b = h("button.no", { type: "button" }, "বাতিল"); b.onclick = () => act(o, "rejected", b); acts.append(b);
     }
+    const pr = h("button.kot", { type: "button", title: "KOT প্রিন্ট", "aria-label": "টিকেট #" + o.id + " প্রিন্ট করুন" }, "প্রিন্ট");
+    pr.onclick = () => printKot(o);
+    acts.append(pr);
     return h("article.tk" + (fresh ? ".fresh" : ".nofx"), { "data-s": o.status, "data-id": o.id },
       h("div.tk-h",
         h("div.tk-table", h("small", "টেবিল"), bn(o.table)),

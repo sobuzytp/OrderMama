@@ -14,6 +14,29 @@ from .gateways import GatewayError, SSLCommerzGateway, get_gateway
 from .models import Payment
 
 
+def gateway_choices():
+    """কোন কোন গেটওয়ে এখন গ্রহণযোগ্য (`.env`-এর PAYMENT_GATEWAY অনুযায়ী)।"""
+    configured = settings.PAYMENT_GATEWAY
+    if configured == "both":
+        return {"manual", "sslcommerz"}
+    return {configured}
+
+
+def selected_gateway(requested=""):
+    """ক্লায়েন্টের চাওয়া গেটওয়ে যাচাই; কিছু না দিলে বুদ্ধিমান ডিফল্ট।
+
+    `both` মোডে কেউ গেটওয়ে না বললে: SSLCommerz-এর ক্রেডেনশিয়াল থাকলে অনলাইন, নইলে manual।
+    """
+    allowed = gateway_choices()
+    requested = (requested or "").strip()
+    if requested:
+        return requested if requested in allowed else ""
+    if settings.PAYMENT_GATEWAY == "both":
+        online_ready = bool(settings.SSLCOMMERZ_STORE_ID and settings.SSLCOMMERZ_STORE_PASSWORD)
+        return "sslcommerz" if online_ready else "manual"
+    return settings.PAYMENT_GATEWAY
+
+
 @login_required
 @require_POST
 def start_payment(request):
@@ -21,9 +44,8 @@ def start_payment(request):
     if not (user.restaurant_id and user.is_restaurant_manager):
         return JsonResponse({"detail": "অনুমতি নেই।"}, status=403)
     plan = get_object_or_404(Plan, pk=request.POST.get("plan"), is_active=True)
-    selected = request.POST.get("gateway", settings.PAYMENT_GATEWAY)
-    allowed = {"manual", "sslcommerz"} if settings.PAYMENT_GATEWAY == "both" else {settings.PAYMENT_GATEWAY}
-    if selected not in allowed:
+    selected = selected_gateway(request.POST.get("gateway"))
+    if not selected:
         return JsonResponse({"detail": "এই পেমেন্ট পদ্ধতি চালু নেই।"}, status=400)
 
     if selected == "manual":

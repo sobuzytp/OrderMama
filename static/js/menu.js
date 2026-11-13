@@ -14,12 +14,13 @@
       const d = await OMC.api(boot.api.menu);
       state.cats = d.categories;
       state.orderingOn = hasTable && d.ordering_enabled;
+      OMC.orderingOn = state.orderingOn;
       state.vat = Number(d.vat_percent) || 0;
       state.svc = Number(d.service_charge_percent) || 0;
       state.byId = new Map(d.categories.flatMap((c) => c.items.map((i) => [i.id, i])));
       const gone = OMC.cart.prune(state.byId);
       if (gone.length) OMC.toast(`“${gone.join("”, “")}” এখন পাওয়া যাচ্ছে না, কার্ট থেকে সরানো হয়েছে।`, true);
-      renderMenu(); renderDock();
+      renderMenu(); renderDock(); OMC.orders && OMC.orders.rerender();
       if (hasTable && !state.orderingOn) showNotice("এই রেস্টুরেন্টে এখন অনলাইন অর্ডার চালু নেই। মেনু দেখে ওয়েটারকে অর্ডার জানান।");
       $("serviceRow") && ($("serviceRow").hidden = !state.orderingOn);
     } catch (e) {
@@ -63,6 +64,7 @@
   function dish(i, idx) {
     const media = h("div.dish-media",
       i.image ? h("img", { src: i.image, alt: "", loading: "lazy", width: 120, height: 120 }) : h("div.ph", i.name.slice(0, 1)),
+      i.badge ? h("span.tag.tag-" + i.badge, i.badge === "popular" ? "জনপ্রিয়" : "নতুন") : null,
       h("div.shade"), h("div.dish-ctl", control(i)));
     return h("article.dish" + (i.is_stock_out ? ".is-out" : ""), { "data-id": i.id, style: `--i:${idx}` },
       h("div.dish-main",
@@ -236,6 +238,8 @@
   $("askBill") && $("askBill").addEventListener("click", (e) => service(e.currentTarget, boot.api.bill, "বিলের অনুরোধ পাঠানো হয়েছে।").then(() => OMC.orders.load()));
 
   /* ---------- জোড়া লাগানো ---------- */
+  OMC.menuIndex = () => state.byId;
+  OMC.canReorder = () => state.orderingOn;
   OMC.cart.onChange(() => { refreshControls(); renderDock(); if (cartSheet.open) renderCart(); });
   OMC.orders.onChange(renderDock);
   const debouncedMenu = (() => { let t; return () => { clearTimeout(t); t = setTimeout(() => loadMenu(true), 250); }; })();

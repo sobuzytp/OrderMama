@@ -29,13 +29,29 @@ class MenuItem(models.Model):
     is_veg = models.BooleanField(default=False)
     is_stock_out = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    # কাস্টমার মেনুতে ব্যাজ: “জনপ্রিয়” মালিক হাতে চালু করেন,
+    # “নতুন” স্বয়ংক্রিয় (তৈরির NEW_BADGE_DAYS দিন পর্যন্ত)
+    is_popular = models.BooleanField(default=False)
     position = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     class Meta:
         ordering = ["position", "id"]
 
     def __str__(self):
         return self.name
+
+    def badge(self):
+        """কাস্টমার মেনুতে দেখানোর ব্যাজ: popular | new | ''।"""
+        from django.utils import timezone
+
+        from .constants import NEW_BADGE_DAYS
+
+        if self.is_popular:
+            return "popular"
+        if self.created_at and (timezone.now() - self.created_at).days < NEW_BADGE_DAYS:
+            return "new"
+        return ""
 
     @property
     def discount_percent(self):

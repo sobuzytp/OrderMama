@@ -1,0 +1,12 @@
+{% extends "error_base.html" %}
+{% block title %}সার্ভারে সমস্যা · OrderMama{% endblock %}
+{% block code %}500{% endblock %}
+{% block heading %}কিছু একটা ভুল হয়েছে{% endblock %}
+{% block content %}
+  <p>আমাদের সার্ভারে অপ্রত্যাশিত সমস্যা হয়েছে। আমরা এটি লগ করে রেখেছি — একটু পরে আবার চেষ্টা করুন।</p>
+  <p class="hint">ঢুকতে না পারলে রেস্টুরেন্টের ওয়েটারকে জানান, অথবা কিছুক্ষণ পর পেজটি রিফ্রেশ করুন।</p>
+  <div class="actions">
+    <a class="btn primary" href="/">শুরুর পাতায় যান</a>
+  </div>
+  {% if request_id %}<div class="ref">রেফারেন্স: {{ request_id }}</div>{% endif %}
+{% endblock %}

@@ -1,7 +1,13 @@
 {% extends "superadmin/base.html" %}
 {% block content %}
 <div class="page-head"><div><h1>প্ল্যাটফর্ম ওভারভিউ</h1><p>সব রেস্টুরেন্ট, মেয়াদ-সতর্কতা ও আয় এক নজরে।</p></div><div class="health" id="health" role="status"></div></div>
+<div class="banner warn" id="payAlert" role="alert" hidden><i data-lucide="banknote" class="i"></i>
+  <span><b id="payAlertCount">০</b>টি Manual Payment অনুমোদনের অপেক্ষায় আছে।</span>
+  <a href="{% url 'superadmin:payments' %}">এখনই যাচাই করুন</a></div>
 <div class="stats" id="stats"></div>
+<div class="sa-grid">
+  <section class="panel"><div class="panel-head"><h2>মাসিক আয় (শেষ ৬ মাস)</h2></div><div class="bar-fallback" id="income"></div></section>
+</div>
 <div class="sa-grid">
   <section class="panel"><div class="panel-head"><h2>মেয়াদ শেষ হচ্ছে (৩ দিনের মধ্যে)</h2></div><ul class="pill-list" id="expiring"></ul></section>
   <section class="panel"><div class="panel-head"><h2>গ্রেস পিরিয়ডে</h2></div><ul class="pill-list" id="grace"></ul></section>

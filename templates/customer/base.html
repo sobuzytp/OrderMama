@@ -8,12 +8,42 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;600;700;800&family=Hind+Siliguri:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="{% static 'css/customer.css' %}">
+  <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+  <meta name="theme-color" content="#E85D04">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="OrderMama">
+  <link rel="apple-touch-icon" href="/pwa-icon-192.png">
   {% block head %}{% endblock %}
 </head>
 <body class="{% block bodyclass %}site-page{% endblock %}">
   {% block body %}{% endblock %}
   <script src="https://unpkg.com/lucide@0.451.0/dist/umd/lucide.min.js"></script>
   <script>try { window.lucide && lucide.createIcons(); } catch (e) {}</script>
+  <script>
+    /* PWA: সার্ভিস ওয়ার্কার + “ফোনে ইনস্টল” বাটন (ব্রাউজার সাপোর্ট থাকলে) */
+    (function () {
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+      }
+      let deferred = null;
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault(); deferred = e;
+        document.querySelectorAll("[data-install]").forEach((b) => { b.hidden = false; });
+      });
+      document.addEventListener("click", async (e) => {
+        const b = e.target.closest("[data-install]");
+        if (!b) return;
+        if (!deferred) { b.hidden = true; return; }
+        deferred.prompt();
+        try { await deferred.userChoice; } catch (_) {}
+        deferred = null;
+        document.querySelectorAll("[data-install]").forEach((x) => { x.hidden = true; });
+      });
+      window.addEventListener("appinstalled", () => {
+        document.querySelectorAll("[data-install]").forEach((x) => { x.hidden = true; });
+      });
+    })();
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

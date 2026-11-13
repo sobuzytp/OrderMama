@@ -66,6 +66,7 @@
         i.image_url ? h("img.ph", { src: i.image_url, alt: "", loading: "lazy" }) : h("div.ph", i.name.slice(0, 1)),
         h("div", h("h3", h("span.veg" + (i.is_veg ? "" : ".non"), { title: i.is_veg ? "ভেজ" : "নন-ভেজ" }), i.name),
           h("div.pr", money(i.price), i.compare_at_price ? h("s.hint", { style: "margin-left:8px;font-weight:400" }, money(i.compare_at_price)) : null),
+          i.badge === "popular" ? h("span.badge.warn", "জনপ্রিয়") : null,
           !i.is_active ? h("span.badge", "লুকানো") : null),
         h("div.ctl", h("label.switch", sw, h("i"), i.is_stock_out ? "স্টক নেই" : "স্টকে আছে"),
           h("span", h("button.btn.sm", { type: "button", onclick: () => itemForm(i) }, OM.icon("pencil"), "এডিট")))));
@@ -83,6 +84,7 @@
     const price = h("input.inp", { id: "ip", type: "number", min: 0, step: "0.01", value: it ? it.price : "", required: true });
     const cmp = h("input.inp", { id: "icp", type: "number", min: 0, step: "0.01", value: it && it.compare_at_price ? it.compare_at_price : "" });
     const veg = h("input", { type: "checkbox", checked: it ? it.is_veg : false });
+    const pop = h("input", { type: "checkbox", checked: it ? it.is_popular : false });
     const act = h("input", { type: "checkbox", checked: it ? it.is_active : true });
     const file = h("input.inp", { id: "ii", type: "file", accept: "image/png,image/jpeg,image/webp" });
     const prev = h("img.preview-img", { alt: "", src: it && it.image_url ? it.image_url : "", hidden: !(it && it.image_url) });
@@ -93,7 +95,7 @@
       h("div.grid2", f("ic", "ক্যাটাগরি", cat), f("ip", "দাম (৳)", price)),
       f("icp", "ছাড়ের আগের দাম (ঐচ্ছিক)", cmp, "দামের চেয়ে বেশি হলে কাস্টমার “ছাড়” ব্যাজ দেখবে।"),
       h("div.field", h("label", { for: "ii" }, "ছবি"), prev, file, h("small", "JPG/PNG/WEBP — সার্ভার নিজে ছোট ও কম্প্রেস করে নেবে।"), rm ? h("label.switch", rm, h("i"), "বর্তমান ছবি সরান") : null),
-      h("div.row", h("label.switch", veg, h("i"), "ভেজ"), h("label.switch", act, h("i"), "কাস্টমারকে দেখান")), err);
+      h("div.row", h("label.switch", veg, h("i"), "ভেজ"), h("label.switch", pop, h("i"), "জনপ্রিয়"), h("label.switch", act, h("i"), "কাস্টমারকে দেখান")), err);
     const del = it ? h("button.btn.danger", { type: "button" }, "মুছুন") : null;
     const dlg = OM.modal(it ? "খাবার সম্পাদনা" : "নতুন খাবার", form, [del, h("button.btn", { type: "button", onclick: () => dlg.close() }, "বাতিল"), h("button.btn.primary", { type: "submit", id: "itemsave" }, "সংরক্ষণ")]);
     if (del) del.onclick = async () => {
@@ -104,7 +106,7 @@
       err.textContent = "";
       const fd = new FormData();
       fd.set("name", name.value.trim()); fd.set("description", desc.value.trim()); fd.set("category", cat.value); fd.set("price", price.value);
-      fd.set("compare_at_price", cmp.value); fd.set("is_veg", veg.checked); fd.set("is_active", act.checked);
+      fd.set("compare_at_price", cmp.value); fd.set("is_veg", veg.checked); fd.set("is_popular", pop.checked); fd.set("is_active", act.checked);
       if (file.files[0]) fd.set("image", file.files[0]);
       if (rm && rm.checked) fd.set("remove_image", "true");
       if (!cmp.value) fd.delete("compare_at_price");
@@ -120,6 +122,38 @@
 
   document.getElementById("addCat").onclick = () => catForm();
   document.getElementById("addItem").onclick = () => itemForm();
+
+  /* ---------- CSV ইমপোর্ট ---------- */
+  document.getElementById("importCsv").onclick = () => {
+    const file = h("input.inp", { id: "csvFile", type: "file", accept: ".csv,text/csv" });
+    const err = h("div.err-text", { role: "alert" });
+    const out = h("div.hint", { "aria-live": "polite" });
+    const dlg = OM.modal("মেনু CSV ইমপোর্ট",
+      h("div",
+        h("p.hint", { style: "margin-bottom:12px" },
+          "হেডারে অন্তত name, category, price কলাম থাকতে হবে (ঐচ্ছিক: description, is_veg)। একই নাম ও ক্যাটাগরি থাকলে দাম আপডেট হবে, নতুন ক্যাটাগরি নিজেই তৈরি হবে।"),
+        h("div.field", h("label", { for: "csvFile" }, "CSV ফাইল"), file),
+        out, err,
+        h("p.hint", "নমুনা: ", h("code", "name,category,price,description,is_veg")),
+        h("p.hint", { style: "margin-bottom:-6px" }, h("code", "কাচ্চি বিরিয়ানি,বিরিয়ানি,350,কম ঝাল,0"))),
+      [h("button.btn", { type: "button", onclick: () => dlg.close() }, "বাতিল"),
+       h("button.btn.primary", { type: "button", id: "csvGo" }, "ইমপোর্ট করুন")]);
+    dlg.querySelector("#csvGo").onclick = async () => {
+      err.textContent = ""; out.textContent = "";
+      if (!file.files[0]) { err.textContent = "একটি CSV ফাইল বেছে নিন।"; return; }
+      const btn = dlg.querySelector("#csvGo");
+      btn.disabled = true;
+      try {
+        const fd = new FormData(); fd.set("file", file.files[0]);
+        const d = await OM.api("/api/d/menu-items/import/", { method: "POST", body: fd });
+        out.textContent = d.message;
+        if (d.errors && d.errors.length) out.append(h("span.err-text", { style: "display:block;margin-top:6px" }, d.errors.join(" ")));
+        OM.toast(d.message, "ok"); load();
+      } catch (e) { err.textContent = e.message; }
+      finally { btn.disabled = false; }
+    };
+  };
+
   document.getElementById("search").oninput = (e) => { q = e.target.value.trim().toLowerCase(); drawItems(); };
   itemsEl.append(OM.skeleton(4, 110)); load();
 })();

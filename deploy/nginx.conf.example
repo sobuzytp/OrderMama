@@ -1,0 +1,68 @@
+# nginx স্যাম্পল — OrderMama (Docker compose বা VPS-এ gunicorn/daphne-এর সামনে)
+# রাখুন /etc/nginx/sites-available/ordermama তারপর `ln -s` করে nginx -t && systemctl reload nginx
+# সার্টিফিকেট: certbot --nginx -d yourdomain.com
+
+upstream ordermama {
+    server 127.0.0.1:8000;   # docker compose হলে 127.0.0.1:8000 (ports: 8000:8000)
+    keepalive 16;
+}
+
+# WebSocket আপগ্রেড হেডার (লাইভ অর্ডার)
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+    return 301 https://$host$request_uri;   # certbot থাকলে এটাই যথেষ্ট
+}
+
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com www.yourdomain.com;
+
+    ssl_certificate     /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    client_max_body_size 8m;          # মেনু ছবি আপলোড (Django-র সীমা ৬ MB)
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    # Django-কে বাস্তব ক্লায়েন্ট IP জানাতে হবে (তাহলে NUM_PROXIES=1 ঠিকভাবে কাজ করে)
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade           $http_upgrade;
+    proxy_set_header Connection        $connection_upgrade;
+    proxy_read_timeout 120s;
+
+    # স্ট্যাটিক ফাইল nginx নিজেই দেবে (collectstatic আগে চালান)
+    location /static/ {
+        alias /app/staticfiles/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # মিডিয়া (মেনু ছবি, লোগো) — SERVE_MEDIA=False রাখুন
+    location /media/ {
+        alias /app/media/;
+        expires 7d;
+        access_log off;
+    }
+
+    # হেলথচেক লগে ভরে না যাক
+    location = /healthz/ {
+        proxy_pass http://ordermama;
+        access_log off;
+    }
+
+    location / {
+        proxy_pass http://ordermama;
+    }
+}

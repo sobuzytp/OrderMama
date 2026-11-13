@@ -186,5 +186,43 @@
     return { close() { closed = true; ws && ws.close(); } };
   };
 
-  document.addEventListener("DOMContentLoaded", () => OM.refreshIcons());
+  /* ---------- অনবোর্ডিং চেকলিস্ট (শুধু owner/manager, একবার বন্ধ করলে আর আসবে না) ---------- */
+  (function onboarding() {
+    const box = document.getElementById("onboard");
+    if (!box) return;
+    const KEY = "om:onboard:off";
+    if (localStorage.getItem(KEY) === "1") return;
+    (async () => {
+      let d;
+      try { d = await OM.api("/api/d/onboarding/"); } catch (e) { return; }
+      if (!d || !d.steps || d.done) return;
+      OM.clear(box);
+      const close = OM.h("button.link-btn", { type: "button", "aria-label": "চেকলিস্ট লুকান" }, OM.icon("x"));
+      close.onclick = () => { localStorage.setItem(KEY, "1"); box.hidden = true; };
+      box.append(OM.h("div.onboard-in",
+        OM.h("div.onboard-top", OM.h("h2", "শুরু করার চেকলিস্ট"),
+          OM.h("span.hint", `${OM.bn(d.completed)}/${OM.bn(d.total)} সম্পন্ন`), close),
+        OM.h("div.prog", { role: "progressbar", "aria-valuemin": 0, "aria-valuemax": d.total, "aria-valuenow": d.completed },
+          OM.h("i", { style: `width:${(d.completed / d.total) * 100}%` })),
+        OM.h("ul.onboard-list", d.steps.map((s) =>
+          OM.h("li" + (s.done ? ".ok" : ""), OM.icon(s.done ? "check-circle-2" : "circle"),
+            OM.h("a", { href: s.url }, s.label), s.done ? OM.h("span.hint", "সম্পন্ন") : null))),
+        !d.approved ? OM.h("p.hint", "আপনার রেস্টুরেন্ট এখনো অনুমোদনের অপেক্ষায়। অনুমোদন পেলে কাস্টমার মেনু চালু হবে।") : null));
+      box.hidden = false;
+      OM.refreshIcons();
+    })();
+  })();
+
+  /* ---------- থিম টগল ---------- */
+  (function initTheme() {
+    const root = document.documentElement;
+    const theme = localStorage.getItem("om:theme") || "light";
+    root.dataset.theme = theme;
+  })();
+  OM.toggleTheme = () => {
+    const root = document.documentElement;
+    const next = root.dataset.theme === "dark" ? "light" : "dark";
+    root.dataset.theme = next;
+    localStorage.setItem("om:theme", next);
+  };
 })();

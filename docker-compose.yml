@@ -1,18 +1,67 @@
-# ডেভ/ছোট সার্ভারের জন্য: ওয়েব + PostgreSQL + Redis।  ব্যবহার: cp .env.example .env && docker compose up --build
+# ডেভ/ছোট সার্ভারের জন্য: ওয়েব + PostgreSQL + Redis।
+# ডেভ:    cp .env.example .env && docker compose up --build
+# প্রোডাকশন: .env-এ DJANGO_DEBUG=False, DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS,
+#            SITE_BASE_URL, SECURE_SSL_REDIRECT=True, SECURE_HSTS_SECONDS=31536000, STRICT_BOOT=1
 services:
   web:
     build: .
+    restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: postgres://ordermama:ordermama@db:5432/ordermama
       REDIS_URL: redis://redis:6379/0
+      LOG_DIR: /app/logs
+      BACKUP_DIR: /app/backups
+      # staticfiles ভলিউম খালি থাকে, তাই বুটে collectstatic চালানো হয়
+      COLLECT_STATIC: "1"
     ports: ["8000:8000"]
-    volumes: ["media:/app/media"]
-    depends_on: [db, redis]
+    volumes:
+      - media:/app/media
+      - static:/app/staticfiles
+      - logs:/app/logs
+      - backups:/app/backups
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
   db:
     image: postgres:16-alpine
-    environment: { POSTGRES_USER: ordermama, POSTGRES_PASSWORD: ordermama, POSTGRES_DB: ordermama }
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ordermama
+      POSTGRES_PASSWORD: ordermama
+      POSTGRES_DB: ordermama
     volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ordermama -d ordermama"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
-volumes: { pgdata: {}, media: {} }
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redisdata:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata: {}
+  media: {}
+  static: {}
+  logs: {}
+  backups: {}
+  redisdata: {}
+

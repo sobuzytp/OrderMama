@@ -28,6 +28,8 @@ superadmin_patterns = ([
 urlpatterns = [
     path("", views.landing, name="landing"),
     path("healthz/", views.healthz),
+    path("pwa-icon-<int:size>.png", views.pwa_icon, name="pwa_icon"),
+    path("sw.js", views.service_worker, name="service_worker"),
     path("register/", views.register_page, name="register"),
     path("merchant/", include(dashboard_patterns)),
     path("super-admin/", include(superadmin_patterns)),

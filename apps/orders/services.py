@@ -29,6 +29,8 @@ def order_payload(order):
         "created_at": order.created_at.isoformat(),
         "items": [
             {
+                "id": i.pk,
+                "menu_item": i.menu_item_id,
                 "name": i.name,
                 "quantity": i.quantity,
                 "unit_price": str(i.unit_price),

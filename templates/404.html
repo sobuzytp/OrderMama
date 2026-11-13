@@ -1,0 +1,11 @@
+{% extends "error_base.html" %}
+{% block title %}পেজটি পাওয়া যায়নি · OrderMama{% endblock %}
+{% block code %}404{% endblock %}
+{% block heading %}পেজটি পাওয়া যায়নি{% endblock %}
+{% block content %}
+  <p>আপনি যে লিংকে গেছেন সেটি নেই, অথবা মেনু/টেবিলের ঠিকানাটি বদলে গেছে।</p>
+  <p class="hint">টেবিলে বসে থাকলে QR কোডটি আবার স্ক্যান করুন।</p>
+  <div class="actions">
+    <a class="btn primary" href="/">শুরুর পাতায় যান</a>
+  </div>
+{% endblock %}

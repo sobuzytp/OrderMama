@@ -8,8 +8,28 @@
   const sheet = document.getElementById("trackSheet");
   const subs = [];
   let orders = [], bill = null, connected = false, pollTimer = null;
+  let canReorder = false;
 
   const stepIndex = (s) => (s === "paid" ? 4 : Math.max(0, STEPS.findIndex((x) => x[0] === s)));
+
+  /** পুরনো অর্ডারের আইটেম আবার কার্টে ভরে দেয় (স্টকে না থাকলে বাদ যায় — কার্ট নিজেই prune করে) */
+  function reorder(o) {
+    const menu = OMC.menuIndex && OMC.menuIndex();
+    let added = 0, skipped = 0;
+    o.items.forEach((it) => {
+      const m = menu && it.menu_item ? menu.get(it.menu_item) : null;
+      if (!m || m.is_stock_out) { skipped += 1; return; }
+      for (let k = 0; k < it.quantity; k += 1) OMC.cart.add(m);
+      added += 1;
+    });
+    if (added) {
+      OMC.toast(skipped ? `${OMC.bn(added)}টি আইটেম কার্টে যোগ হয়েছে; ${OMC.bn(skipped)}টি এখন পাওয়া যাচ্ছে না।` : "আইটেমগুলো কার্টে যোগ হয়েছে।", Boolean(skipped));
+      sheet.close();
+      OMC.openSheet(document.getElementById("cartSheet"));
+    } else {
+      OMC.toast("এই অর্ডারের আইটেমগুলো এখন মেনুতে নেই।", true);
+    }
+  }
 
   function ticket(o) {
     const rejected = o.status === "rejected";
@@ -25,11 +45,13 @@
         ? h("div.reject-box", h("b", "অর্ডারটি নেওয়া যায়নি"), h("span", o.reject_reason || "রেস্টুরেন্ট অর্ডারটি গ্রহণ করতে পারেনি। ওয়েটারকে জানান।"))
         : h("ol.steps", STEPS.map((s, i) => h("li" + (i < idx ? ".done" : i === idx ? ".now" : ""),
             { "aria-current": i === idx ? "step" : false }, h("span.node"), h("span.lbl", s[1])))),
-      h("div.t-foot", h("span", "অর্ডার মোট"), h("b", money(o.subtotal))));
+      h("div.t-foot", h("span", "অর্ডার মোট"), h("b", money(o.subtotal)),
+        canReorder ? h("button.btn.btn-ghost.reorder-btn", { type: "button", onclick: () => reorder(o) }, OMC.icon("rotate-ccw"), "একই অর্ডার আবার") : null));
     return h("div.ticket-wrap", { "data-id": o.id }, t);
   }
 
   function render() {
+    canReorder = Boolean(OMC.canReorder && OMC.canReorder());
     OMC.clear(body);
     if (!orders.length) {
       body.append(h("div.cart-empty", h("div.empty-art", OMC.icon("receipt-text")), h("h3", "এখনো কোনো অর্ডার নেই"),
@@ -90,6 +112,7 @@
     total: () => orders.length,
     add: (o) => upsert(o),
     load, setState, upsert,
+    rerender: render,
     open() { load(); OMC.openSheet(sheet); },
     onChange: (f) => subs.push(f),
   };

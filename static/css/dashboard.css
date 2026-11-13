@@ -52,6 +52,57 @@ img{max-width:100%}
 .banner.warn{background:var(--warn-soft);color:#5B3F05;border-color:#EBD59B}
 .banner.bad{background:var(--danger-soft);color:#7A1D15;border-color:#F0BDB6}
 .banner.ok{background:var(--ok-soft);color:#0F5233;border-color:#B8E2CB}
+
+/* ---------- অনবোর্ডিং চেকলিস্ট ---------- */
+.onboard{background:var(--surface);border-bottom:1px solid var(--line);padding:16px 28px}
+.onboard-in{max-width:820px}
+.onboard-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.onboard-top h2{font-size:1.05rem;margin:0}
+.onboard-top .hint{margin-left:auto}
+.onboard-top .link-btn{color:var(--muted);margin:0;padding:6px}
+.prog{height:8px;border-radius:4px;background:var(--line-2);overflow:hidden;margin:10px 0 12px}
+.prog i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.onboard-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.onboard-list li{display:flex;align-items:center;gap:9px;font-size:.95rem}
+.onboard-list li .i{color:var(--muted);width:1.05em;height:1.05em}
+.onboard-list li.ok .i{color:var(--ok)}
+.onboard-list li.ok a{color:var(--muted);text-decoration:line-through}
+.onboard-list li a{color:var(--ink);text-decoration:none;font-weight:500}
+/* ডার্ক মোড কালার স্কিম */
+[data-theme="dark"] {
+  --bg:#0A0D10; --surface:#141A21; --soft:#1B222A;
+  --ink:#E8EDF3; --ink-2:#A0AAB8; --line:#2C3847; --line-2:#2C3847;
+  --accent:#3CCBB4; --accent-ink:#7FE3D1; --accent-soft:#123530;
+  --danger:#FF8A7E; --danger-soft:#3A1F1C; --warn:#F5C26B; --warn-soft:#3A2E14;
+  --ok:#5FD99F; --ok-soft:#123327; --info:#7FB0F5; --info-soft:#16263D;
+}
+[data-theme="dark"] body{background:var(--bg);color:var(--ink)}
+[data-theme="dark"] .inp,[data-theme="dark"] select.inp,[data-theme="dark"] textarea.inp{background:var(--soft);border-color:var(--card-line);color:var(--ink)}
+[data-theme="dark"] .inp::placeholder{color:var(--muted)}
+[data-theme="dark"] .skel{background:linear-gradient(90deg,#1B222A 25%,#232C36 50%,#1B222A 75%);background-size:200% 100%}
+[data-theme="dark"] .modal-in{background:var(--surface)}
+[data-theme="dark"] .badge{background:var(--card-line);color:var(--ink-2)}
+[data-theme="dark"] .tbl th{color:var(--muted);border-color:var(--line)}
+[data-theme="dark"] .tbl td{border-color:var(--line-2)}
+[data-theme="dark"] .tcard{background:var(--surface)}
+[data-theme="dark"] .tcard.off{background:#171E27;opacity:.75}
+[data-theme="dark"] .tb-tile{background:var(--soft);border-color:var(--line)}
+[data-theme="dark"] .tb-tile.tb-cooking{background:var(--warn-soft)}
+[data-theme="dark"] .tb-tile.tb-bill{background:var(--info-soft)}
+[data-theme="dark"] a{color:var(--accent-ink)}
+[data-theme="dark"] .btn{background:var(--soft);border-color:var(--card-line);color:var(--ink)}
+
+/* ---------- টেবিল বোর্ড ---------- */
+.tboard{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px}
+.tb-tile{position:relative;display:grid;gap:6px;padding:12px;border:1px solid var(--line);border-left:4px solid var(--line);
+  border-radius:var(--r);background:var(--soft);min-height:104px}
+.tb-tile.tb-free{border-left-color:var(--ok)}
+.tb-tile.tb-cooking{border-left-color:var(--warn);background:var(--warn-soft)}
+.tb-tile.tb-bill{border-left-color:var(--info);background:var(--info-soft)}
+.tb-no{font:800 1.5rem/1 var(--f-head);font-variant-numeric:tabular-nums}
+.tb-meta{font-size:.8rem;color:var(--muted)}
+.tb-total{font-weight:700;font-variant-numeric:tabular-nums}
+.tb-bell{display:inline-flex;align-items:center;gap:4px;font-size:.78rem;font-weight:600;color:var(--danger)}
 .banner.info{background:var(--info-soft);color:#17398A;border-color:#BCD0F3}
 
 /* ---------- কন্ট্রোল ---------- */
@@ -189,6 +240,8 @@ dialog.modal::backdrop{background:#0A101799}
 .tk-act button.no{flex:0 0 auto;background:transparent;border:1px solid #6E3B36;color:#FF9C92}
 .tk-act button.no:hover{background:#3B1B18}
 .tk-act button[disabled]{opacity:.6}
+.tk-act button.kot{flex:0 0 auto;background:transparent;border:1px solid var(--card-line);color:var(--board-ink);font-size:.9rem;font-weight:600;padding:0 14px}
+.tk-act button.kot:hover{background:#222E3B}
 .tk-rej{margin:0 14px 12px;color:#FF9C92;font-size:.9rem}
 
 /* ---------- বিল ---------- */
@@ -210,6 +263,7 @@ dialog.modal::backdrop{background:#0A101799}
 .bill-f{display:flex;gap:8px;padding:0 16px 16px}
 .bill-f .btn{flex:1}
 #receipt{display:none}
+#kot{display:none}
 
 /* ---------- মেনু ---------- */
 .split{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start}
@@ -319,6 +373,21 @@ dialog.modal::backdrop{background:#0A101799}
   #receipt hr{border:0;border-top:1px dashed #000;margin:6px 0}
   #receipt .l{display:flex;justify-content:space-between;gap:8px}
   #receipt .b{font-weight:700;font-size:15px}
+  /* KOT (কিচেন টিকেট): রিসিটের মতোই, কিন্তু দাম নেই — রান্নাঘরের জন্য বড় অক্ষর */
+  #kot{display:none}
+  body.print-kot #receipt{display:none}
+  body.print-kot #kot,body.print-kot #kot *{visibility:visible}
+  body.print-kot #kot{display:block;position:absolute;inset:0 auto auto 0;width:80mm;padding:5mm;
+    font:14px/1.5 "Hind Siliguri",monospace;color:#000;background:#fff}
+  #kot h2{text-align:center;font-size:16px}
+  #kot .c{text-align:center}
+  #kot hr{border:0;border-top:1px dashed #000;margin:7px 0}
+  #kot .kot-items{list-style:none;margin:0;padding:0}
+  #kot .kot-items li{display:block;font-size:16px;font-weight:700;padding:5px 0;border-bottom:1px dotted #999}
+  #kot .kot-items li b{display:inline-block;min-width:2.6em;font-size:17px}
+  #kot .kot-items li em{display:block;font-size:13px;font-weight:400}
+  #kot .kot-note{margin-top:7px;padding:6px;border:1px solid #000;font-size:13px}
+  #kot .kot-cust{font-weight:700}
 }
 
 /* ---------- পরবর্তী পেজের ছোট সংযোজন ---------- */

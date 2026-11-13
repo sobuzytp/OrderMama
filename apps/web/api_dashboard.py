@@ -300,9 +300,199 @@ class BrandingView(TenantAPIView):
 
 
 # ---------- অ্যানালিটিক্স ----------
+class MenuCsvImportView(TenantAPIView):
+    """Menu CSV import: name,category,price,description,is_veg → একবারে মেনু ভরা।
+
+    পাশাপাশি CSV-তে থাকা নতুন ক্যাটাগরি নিজে থেকেই তৈরি হয়। পুরনো আইটেমের নাম+ক্যাটাগরি
+    মিললে দাম/বিবরণ আপডেট হয় (ডুপ্লিকেট তৈরি হয় না)।
+    """
+
+    def post(self, request):
+        import csv
+        import io
+
+        from apps.menu.constants import CSV_MAX_BYTES, CSV_MAX_ROWS
+        from apps.menu.models import Category, MenuItem
+
+        up = request.FILES.get("file")
+        if not up:
+            return Response({"detail": "CSV ফাইল দিন।"}, status=400)
+        if up.size > CSV_MAX_BYTES:
+            return Response({"detail": "ফাইলটি অনেক বড় (সর্বোচ্চ ৫১২ KB)।"}, status=400)
+        try:
+            text = up.read().decode("utf-8-sig")
+        except UnicodeDecodeError:
+            return Response({"detail": "ফাইলটি UTF-8 এ সংরক্ষণ করুন (Excel: CSV UTF-8)।"}, status=400)
+
+        rows = list(csv.reader(io.StringIO(text)))
+        if not rows:
+            return Response({"detail": "ফাইলটি খালি।"}, status=400)
+        header = [c.strip().lower() for c in rows[0]]
+        need = {"name", "category", "price"}
+        if not need.issubset(set(header)):
+            return Response({"detail": "হেডারে অন্তত name, category, price কলাম লাগবে।"}, status=400)
+        idx = {k: header.index(k) for k in header}
+        if len(rows) - 1 > CSV_MAX_ROWS:
+            return Response({"detail": f"একবারে সর্বোচ্চ {CSV_MAX_ROWS}টি লাইন ইমপোর্ট করা যায়।"}, status=400)
+
+        created = updated = 0
+        errors = []
+        for n, raw in enumerate(rows[1:], start=2):
+            if not any((c or "").strip() for c in raw):
+                continue
+            get = lambda col: (raw[idx[col]].strip() if col in idx and idx[col] < len(raw) else "")
+            name, cat_name = get("name")[:120], get("category")[:80]
+            if not name or not cat_name:
+                errors.append(f"লাইন {n}: নাম ও ক্যাটাগরি লাগবে।")
+                continue
+            try:
+                price = float(get("price").replace(",", ""))
+            except ValueError:
+                errors.append(f"লাইন {n}: দাম সংখ্যা নয়।")
+                continue
+            if price < 0 or price > 1_000_000:
+                errors.append(f"লাইন {n}: দাম সীমার বাইরে।")
+                continue
+            cat, _ = Category.objects.get_or_create(restaurant=self.restaurant, name=cat_name)
+            obj, is_new = MenuItem.objects.get_or_create(
+                restaurant=self.restaurant, category=cat, name=name,
+                defaults={"price": price, "description": get("description")[:300],
+                          "is_veg": get("is_veg").lower() in ("1", "true", "yes", "veg", "y")},
+            )
+            if is_new:
+                created += 1
+            else:
+                obj.price = price
+                if "description" in idx:
+                    obj.description = get("description")[:300]
+                obj.save(update_fields=["price", "description"])
+                updated += 1
+
+        return Response({"created": created, "updated": updated, "errors": errors[:20],
+                         "message": f"{created}টি নতুন, {updated}টি আপডেট হয়েছে।"})
+
+
 class AnalyticsView(TenantAPIView):
     def get(self, request):
         return Response(sales_report(self.restaurant, request.query_params.get("period", "daily")))
+
+
+class TableBoardView(TenantAPIView):
+    """টেবিল বোর্ড: কোন টেবিল খালি, কোনটায় খোলা অর্ডার, কোনটায় বিল বাকি।
+
+    একটিমাত্র কুয়েরিতে সব টেবিলের অবস্থা দেয় (নন-নেস্টেড aggregate), তাই টেবিল ২০০ হলেও হালকা।
+    """
+
+    def get(self, request):
+        from django.db.models import Count, Q, Sum
+
+        tables = list(Table.objects.filter(restaurant=self.restaurant, is_active=True).order_by("number"))
+        rows = (
+            Order.objects.filter(restaurant=self.restaurant)
+            .exclude(status=Order.Status.REJECTED)
+            .values("table_id")
+            .annotate(
+                active=Count("id", filter=Q(status__in=Order.ACTIVE_STATUSES)),
+                served=Count("id", filter=Q(status=Order.Status.SERVED)),
+                total=Sum("subtotal", filter=Q(status__in=["served", "paid"])),
+            )
+        )
+        by_table = {r["table_id"]: r for r in rows}
+        reqs = {r.table_id for r in ServiceRequest.objects.filter(restaurant=self.restaurant, is_resolved=False)}
+        out = []
+        for t in tables:
+            r = by_table.get(t.pk) or {}
+            active, served = r.get("active") or 0, r.get("served") or 0
+            if active:
+                state = "cooking"
+            elif served:
+                state = "bill"          # খাবার এসে গেছে, বিল বাকি
+            else:
+                state = "free"
+            out.append({
+                "id": t.pk, "number": t.number, "name": t.display_name,
+                "state": state, "active": active, "served": served,
+                "total": str(r.get("total") or 0), "waiting": t.pk in reqs,
+            })
+        summary = {
+            "free": sum(1 for x in out if x["state"] == "free"),
+            "cooking": sum(1 for x in out if x["state"] == "cooking"),
+            "bill": sum(1 for x in out if x["state"] == "bill"),
+            "waiting": sum(1 for x in out if x["waiting"]),
+        }
+        return Response({"tables": out, "summary": summary})
+
+
+class OnboardingStatusView(TenantAPIView):
+    """প্রথম লগইনে দেখানোর চেকলিস্ট। প্রতিটি ধাপ সত্যিকারের ডেটা থেকে যাচাই হয়।"""
+
+    def get(self, request):
+        r = self.restaurant
+        sub = r.current_subscription
+        has_table = Table.objects.filter(restaurant=r, is_active=True).exists()
+        steps = [
+            {"key": "menu", "label": "মেনুতে খাবার যোগ করুন", "url": "/merchant/menu/",
+             "done": MenuItem.objects.filter(restaurant=r, is_active=True).exists()},
+            {"key": "table", "label": "টেবিল তৈরি করে QR প্রিন্ট করুন", "url": "/merchant/tables/",
+             "done": has_table},
+            {"key": "branding", "label": "লোগো ও রং ঠিক করুন", "url": "/merchant/branding/",
+             "done": bool(r.logo or r.cover_image) or r.theme != "light"},
+            {"key": "subscription", "label": "সাবস্ক্রিপশন চালু রাখুন", "url": "/merchant/billing/",
+             "done": bool(sub and sub.state in ("active", "expiring"))},
+            {"key": "staff", "label": "স্টাফ অ্যাকাউন্ট তৈরি করুন", "url": "/merchant/staff/",
+             "done": r.staff.exclude(role=User.Role.OWNER).exists()},
+        ]
+        return Response({
+            "steps": steps,
+            "done": all(s["done"] for s in steps),
+            "completed": sum(1 for s in steps if s["done"]),
+            "total": len(steps),
+            "features": {k: r.has_feature(k) for k in ("live_orders", "qr_generator", "branding")},
+            "approved": r.is_approved,
+        })
+
+
+class SalesCsvView(TenantAPIView):
+    """বিক্রির CSV এক্সপোর্ট (পরিবেশিত/পরিশোধিত অর্ডার)। Excel-এ বাংলা ঠিক খুলতে UTF-8 BOM দেওয়া হয়।"""
+
+    def get(self, request):
+        import csv
+
+        from django.http import HttpResponse
+        from django.utils import timezone
+
+        from apps.orders.models import Order
+
+        qs = (
+            Order.objects.filter(restaurant=self.restaurant, status__in=["served", "paid"])
+            .select_related("table").prefetch_related("items").order_by("-created_at")
+        )
+        start = request.query_params.get("from")
+        end = request.query_params.get("to")
+        try:
+            if start:
+                qs = qs.filter(created_at__date__gte=start)
+            if end:
+                qs = qs.filter(created_at__date__lte=end)
+        except Exception:
+            return Response({"detail": "তারিখের ফরম্যাট সঠিক নয় (YYYY-MM-DD)।"}, status=400)
+
+        resp = HttpResponse(content_type="text/csv; charset=utf-8")
+        stamp = timezone.localtime().strftime("%Y%m%d-%H%M")
+        resp["Content-Disposition"] = f'attachment; filename="{self.restaurant.slug}-sales-{stamp}.csv"'
+        resp.write("\ufeff")  # BOM
+        w = csv.writer(resp)
+        w.writerow(["তারিখ", "সময়", "অর্ডার", "টেবিল", "কাস্টমার", "মোবাইল", "খাবার", "পরিমাণ", "একক দাম", "লাইন মোট", "অর্ডার মোট", "অবস্থা"])
+        for o in qs:
+            local = timezone.localtime(o.created_at)
+            base = [local.strftime("%Y-%m-%d"), local.strftime("%H:%M"), o.pk,
+                    o.table.display_name, o.customer_name, o.customer_phone]
+            items = list(o.items.all())
+            if not items:
+                w.writerow(base + ["", "", "", "", o.subtotal, o.get_status_display()])
+            for i in items:
+                w.writerow(base + [i.name, i.quantity, i.unit_price, i.line_total, o.subtotal, o.get_status_display()])
+        return resp
 
 
 # ---------- স্টাফ ----------

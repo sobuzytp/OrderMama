@@ -1,12 +1,15 @@
 """HTML পেজ ভিউ। ডেটা JavaScript fetch দিয়ে আসে; এখানে শুধু কাঠামো, ব্র্যান্ডিং ও অ্যাক্সেস-নিয়ন্ত্রণ।"""
+import io
 import json
+import logging
 from functools import wraps
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from apps.accounts.models import User
@@ -17,6 +20,7 @@ from apps.subscriptions.models import Plan
 
 from .utils import brand_for
 
+logger = logging.getLogger(__name__)
 R = User.Role
 
 # মেনুর আইটেম অনুযায়ী ন্যাভ: (ইউআরএল-নাম, লেবেল, আইকন, অনুমোদিত রোল, ফিচার)
@@ -194,10 +198,91 @@ def landing(request):
     return render(request, "customer/landing.html", {"plans": Plan.objects.filter(is_active=True)})
 
 
+def service_worker(request):
+    """Service worker সবসময় রুট থেকে সার্ভ হয় যাতে scope = “/” হয় (সব পেজ নিয়ন্ত্রণ করে)।"""
+    path = settings.BASE_DIR / "static" / "sw.js"
+    try:
+        body = path.read_bytes()
+    except OSError:
+        raise Http404("service worker নেই")
+    resp = HttpResponse(body, content_type="application/javascript")
+    resp["Service-Worker-Allowed"] = "/"
+    resp["Cache-Control"] = "no-cache"
+    return resp
+
+
+def pwa_icon(request, size):
+    """PWA আইকন (PNG) — সার্ভারে ফন্টের উপর নির্ভর না করে শুধু শেপ দিয়ে আঁকা।
+
+    কেন ভিউ: রিপোতে বাইনারি ফাইল না রেখে আইকন জেনারেট হয়, তাই ডিপ্লয়ে অতিরিক্ত ধাপ লাগে না।
+    ব্রাউজার দীর্ঘদিন ক্যাশ রাখতে পারে (immutable)।
+    """
+    size = max(48, min(1024, int(size)))
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    s = size
+    d.rounded_rectangle((0, 0, s - 1, s - 1), radius=int(s * 0.22), fill=(232, 93, 4, 255))
+    # রিসিটের কাগজ
+    pad = s * 0.22
+    d.rounded_rectangle((pad, pad * 0.85, s - pad, s - pad * 1.15), radius=int(s * 0.05), fill=(255, 255, 255, 255))
+    # রিসিটের লাইন
+    line_h = s * 0.045
+    gap = s * 0.10
+    x0 = pad * 1.35
+    x1 = s - pad * 1.35
+    y = pad * 1.55
+    for i in range(3):
+        d.rounded_rectangle((x0, y, x1 - (0 if i < 2 else s * 0.16), y + line_h), radius=int(line_h / 2),
+                            fill=(232, 93, 4, 255) if i == 0 else (200, 206, 214, 255))
+        y += gap
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    resp = HttpResponse(buf.getvalue(), content_type="image/png")
+    resp["Cache-Control"] = "public, max-age=31536000, immutable"
+    return resp
+
+
 def register_page(request):
     return render(request, "customer/register.html")
 
 
 def healthz(request):
+    """ডিপ্লয়/মনিটরিংয়ের হেলথ-প্রোব: DB + ক্যাশ (রিয়েল-টাইম লেয়ার) সচল কি না।
+
+    - সব ঠিক: HTTP 200 + {"ok": true}
+    - কিছু নষ্ট: HTTP 503 + {"ok": false, ...}  (Docker healthcheck / uptime monitor-এর জন্য)
+    """
+    from django.core.cache import cache
+    from django.db import connection
     from django.http import JsonResponse
-    return JsonResponse({"ok": True})
+
+    checks = {"database": False, "cache": False}
+    try:
+        connection.ensure_connection()
+        with connection.cursor() as cur:
+            cur.execute("SELECT 1")
+            cur.fetchone()
+        checks["database"] = True
+    except Exception:
+        logger.exception("healthz: ডেটাবেজ চেক ব্যর্থ")
+    try:
+        cache.set("healthz:probe", "1", 5)
+        checks["cache"] = cache.get("healthz:probe") == "1"
+    except Exception:
+        logger.exception("healthz: ক্যাশ চেক ব্যর্থ")
+
+    ok = all(checks.values())
+    payload = {
+        "ok": ok,
+        "env": settings.DEPLOY_ENV,
+        "release": settings.RELEASE,
+        "checks": checks,
+        "realtime": "redis" if settings.REDIS_URL else "in-memory",
+        "time": timezone.now().isoformat(),
+    }
+    resp = JsonResponse(payload, status=200 if ok else 503)
+    resp["Cache-Control"] = "no-store"
+    return resp
+

@@ -74,7 +74,7 @@ def menu_data(restaurant):
                 "compare_at_price": str(i.compare_at_price) if i.compare_at_price else "",
                 "discount_percent": i.discount_percent,
                 "image": i.image.url if i.image else "", "is_veg": i.is_veg,
-                "is_stock_out": i.is_stock_out,
+                "is_stock_out": i.is_stock_out, "badge": i.badge(),
             }
             for i in c.items.all() if i.is_active
         ]

@@ -452,6 +452,7 @@ class SuperAdminPlanManagementTests(Base):
 
 
 class PaymentPageTests(Base):
+    @override_settings(DEBUG=True, PAYMENT_GATEWAY="mock")
     def test_mock_payment_flow(self):
         owner = staff(self.r, R.OWNER)
         oc = self.login(owner)
@@ -461,9 +462,20 @@ class PaymentPageTests(Base):
         self.assertEqual(oc.get("/merchant/live/").status_code, 402)  # মেয়াদ শেষ → লক
         self.assertEqual(oc.get("/merchant/billing/").status_code, 200)  # বিলিং খোলা
         res = oc.post("/payments/start/", {"plan": self.prem.pk})
+        self.assertEqual(res.status_code, 200, res.content)
         url = res.json()["redirect"]
         oc.post(url, {"result": "ok"})
         self.assertEqual(oc.get("/merchant/live/").status_code, 200)
+
+    @override_settings(PAYMENT_GATEWAY="both", SSLCOMMERZ_STORE_ID="", SSLCOMMERZ_STORE_PASSWORD="")
+    def test_both_mode_without_online_credentials_defaults_to_manual(self):
+        """SSLCommerz ক্রেডেনশিয়াল ছাড়া ‘both’ মোডে ডিফল্ট manual — 502 নয়।"""
+        oc = self.login(staff(self.r, R.OWNER))
+        res = oc.post("/payments/start/", {"plan": self.prem.pk, "method": "bkash",
+                                           "sender_number": "01601642548", "trx_id": "AUTO-001"})
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(Payment.objects.get().status, Payment.Status.SUBMITTED)
+
 
 
     @override_settings(PAYMENT_GATEWAY="both")
@@ -570,3 +582,151 @@ class PulseTests(Base):
         self.assertEqual(owner.get("/api/d/pulse/").json()["v"], v1)
         self.assertEqual(self.order().status_code, 201)
         self.assertNotEqual(owner.get("/api/d/pulse/").json()["v"], v1)
+
+
+# ---------------- Phase 6: লঞ্চ প্রস্তুতি ----------------
+import io  # noqa: E402
+import json  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from django.core.management import call_command  # noqa: E402
+from django.test import SimpleTestCase  # noqa: E402
+
+
+class HealthzTests(Base):
+    def test_healthz_ok_payload(self):
+        res = self.c.get("/healthz/")
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertTrue(body["ok"])
+        self.assertTrue(body["checks"]["database"])
+        self.assertTrue(body["checks"]["cache"])
+        self.assertEqual(body["checks"].keys(), {"database", "cache"})
+        self.assertIn("release", body)
+        self.assertEqual(res["Cache-Control"], "no-store")
+
+    def test_healthz_reports_503_when_database_down(self):
+        from unittest.mock import patch
+
+        with patch("django.db.connection.cursor", side_effect=RuntimeError("down")):
+            res = self.c.get("/healthz/")
+        self.assertEqual(res.status_code, 503)
+        self.assertFalse(res.json()["ok"])
+        self.assertFalse(res.json()["checks"]["database"])
+
+
+class ErrorPageTests(Base):
+    def test_404_page_is_bangla_and_self_contained(self):
+        res = self.c.get("/cafe-a/does-not-exist-at-all/")
+        self.assertEqual(res.status_code, 404)
+        self.assertContains(res, "পেজটি পাওয়া যায়নি", status_code=404)
+
+
+class CheckProductionCommandTests(Base):
+    def run_cmd(self, *args):
+        out = io.StringIO()
+        call_command("check_production", *args, stdout=out)
+        return out.getvalue()
+
+    def test_detects_demo_data_and_default_passwords(self):
+        User.objects.create_superuser("admin", password="admin12345")
+        Restaurant.objects.create(name="ডেমো", slug="demo-biryani")
+        output = self.run_cmd()
+        self.assertIn("ডিফল্ট/দুর্বল পাসওয়ার্ড", output)
+        self.assertIn("ডেমো রেস্টুরেন্ট", output)
+
+    def test_clean_database_passes_launch_checks_when_debug_off(self):
+        with override_settings(
+            DEBUG=False, SECRET_KEY="x" * 50, ALLOWED_HOSTS=["ordermama.example.com"],
+            SITE_BASE_URL="https://ordermama.example.com",
+            CSRF_TRUSTED_ORIGINS=["https://ordermama.example.com"],
+            SECURE_SSL_REDIRECT=True, SECURE_HSTS_SECONDS=31536000,
+            SESSION_COOKIE_SECURE=True, CSRF_COOKIE_SECURE=True,
+            NUM_PROXIES=1, PAYMENT_GATEWAY="manual", MANUAL_BKASH_NUMBER="01712345678",
+            REDIS_URL="redis://127.0.0.1:6379/0", SERVE_MEDIA=False,
+            ADMINS=[("A", "a@example.com")], DEPLOY_ENV="production",
+            EMAIL_HOST="smtp.example.com", EMAIL_HOST_USER="u",
+        ):
+            output = self.run_cmd("--skip-db")
+        self.assertIn("0 সমস্যা", output)
+
+    def test_strict_mode_exits_non_zero_on_problems(self):
+        with override_settings(DEBUG=True, PAYMENT_GATEWAY="mock"):
+            with self.assertRaises(SystemExit):
+                self.run_cmd("--strict", "--skip-db")
+
+
+class ClearDemoCommandTests(Base):
+    def test_clear_demo_dry_run_and_delete(self):
+        User.objects.create_superuser("admin", password="admin12345")
+        r = Restaurant.objects.create(name="ডেমো", slug="demo-cafe", is_approved=True)
+        User.objects.create_user("demo_owner", password="demo12345", restaurant=r)
+        out = io.StringIO()
+        call_command("clear_demo", "--dry-run", "--yes", stdout=out)
+        self.assertIn("dry-run", out.getvalue())
+        self.assertTrue(Restaurant.objects.filter(slug="demo-cafe").exists())
+
+        out = io.StringIO()
+        call_command("clear_demo", "--yes", stdout=out)
+        self.assertFalse(Restaurant.objects.filter(slug="demo-cafe").exists())
+        self.assertFalse(User.objects.filter(username="demo_owner").exists())
+        # --with-admin ছাড়া admin থাকে
+        self.assertTrue(User.objects.filter(username="admin").exists())
+
+
+class BackupCommandTests(SimpleTestCase):
+    def test_sqlite_backup_is_valid_gzip(self):
+        import gzip
+        import sqlite3
+        import tempfile
+        from unittest.mock import patch
+
+        from django.db import connection
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "sample.sqlite3"
+            conn = sqlite3.connect(db_path)
+            conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)")
+            conn.execute("INSERT INTO t (name) VALUES ('অর্ডারমামা')")
+            conn.commit()
+            conn.close()
+
+            target = Path(tmp) / "db-test.gz"
+            settings_dict = dict(connection.settings_dict)
+            settings_dict.update({"ENGINE": "django.db.backends.sqlite3", "NAME": str(db_path)})
+            with patch.object(connection, "settings_dict", settings_dict):
+                call_command("backup_db", "-o", str(target))
+
+            self.assertTrue(target.exists())
+            with gzip.open(target, "rb") as fh:
+                self.assertTrue(fh.read(16).startswith(b"SQLite format 3"))
+            # পুনরুদ্ধারযোগ্য: আনজিপ করে আবার খোলা যায়
+            restored = Path(tmp) / "restored.sqlite3"
+            with gzip.open(target, "rb") as fh:
+                restored.write_bytes(fh.read())
+            check = sqlite3.connect(restored)
+            try:
+                self.assertEqual(check.execute("SELECT name FROM t").fetchone()[0], "অর্ডারমামা")
+            finally:
+                check.close()
+
+    def test_rotation_keeps_only_newest(self):
+        import os
+        import tempfile
+        import time
+
+        from apps.web.management.commands.backup_db import Command
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            names = ["db-20260101-000000.gz", "db-20260102-000000.gz", "db-20260103-000000.gz"]
+            for i, name in enumerate(names):
+                f = folder / name
+                f.write_bytes(b"x")
+                os.utime(f, (time.time() + i, time.time() + i))  # mtime ক্রম নিশ্চিত
+
+            out = io.StringIO()
+            Command(stdout=out).rotate(folder, keep=2)
+            left = sorted(p.name for p in folder.glob("db-*.gz"))
+            self.assertEqual(left, names[-2:])
+            self.assertIn(names[0], out.getvalue())

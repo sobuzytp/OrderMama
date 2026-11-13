@@ -1,0 +1,21 @@
+# গোপন ও লোকাল ফাইল কনটেইনারে যাবে না
+.env
+.git/
+.gitignore
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.sqlite3
+db_old.sqlite3
+media/
+staticfiles/
+logs/
+backups/
+tmp/
+*.log
+.idea/
+.vscode/
+node_modules/
+db.sqlite3

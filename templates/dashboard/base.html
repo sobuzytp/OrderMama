@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem("om:theme") || "light"; } catch (e) {}</script>
 <title>{% block title %}{{ title }}{% endblock %} · OrderMama</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,6 +21,7 @@
       {% endif %}{% endfor %}
     </nav>
     <div class="side-foot">
+      <button class="link-btn" type="button" onclick="OM.toggleTheme()"><i data-lucide="moon" class="i"></i><span>থিম টগল</span></button>
       <span class="who">{{ request.user.username }}</span>
       <form method="post" action="{% url 'dashboard:logout' %}">{% csrf_token %}<button class="link-btn" type="submit"><i data-lucide="log-out" class="i"></i><span>লগআউট</span></button></form>
     </div>
@@ -31,6 +33,9 @@
       {% elif sub.state == 'grace' %}
       <div class="banner bad" role="alert"><i data-lucide="triangle-alert" class="i"></i><span>মেয়াদ শেষ হয়েছে। গ্রেস পিরিয়ড চলছে — {{ sub.grace_end|date:"j F" }} তারিখের পর কাস্টমার মেনু বন্ধ হয়ে যাবে।</span><a href="{% url 'dashboard:billing' %}">পেমেন্ট করুন</a></div>
       {% endif %}
+    {% endif %}
+    {% if request.user.role == 'owner' or request.user.role == 'manager' %}
+    <div class="onboard" id="onboard" hidden aria-live="polite"></div>
     {% endif %}
     {% block main %}
     <div class="page">{% block content %}{% endblock %}</div>

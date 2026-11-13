@@ -54,16 +54,20 @@ class MenuItemSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(write_only=True, required=False, allow_null=True)
     remove_image = serializers.BooleanField(write_only=True, required=False, default=False)
     discount_percent = serializers.IntegerField(read_only=True)
+    badge = serializers.SerializerMethodField()
 
     class Meta:
         model = MenuItem
         fields = [
             "id", "category", "name", "description", "price", "compare_at_price", "discount_percent", "image", "image_url", "remove_image",
-            "is_veg", "is_stock_out", "is_active", "position",
+            "is_veg", "is_stock_out", "is_active", "is_popular", "badge", "position",
         ]
 
     def get_image_url(self, obj):
         return obj.image.url if obj.image else ""
+
+    def get_badge(self, obj):
+        return obj.badge()
 
     def validate_category(self, cat):
         if cat.restaurant_id != self.context["restaurant"].pk:

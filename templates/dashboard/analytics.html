@@ -3,7 +3,8 @@
 {% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>{% endblock %}
 {% block content %}
 <div class="page-head"><div><h1>সেলস অ্যানালিটিক্স</h1><p>পরিবেশিত ও পরিশোধিত অর্ডার থেকে হিসাব। বাতিল বা চলমান অর্ডার ধরা হয় না।</p></div>
-  <div class="seg" role="group" aria-label="সময়কাল"><button type="button" data-p="daily" aria-pressed="true">দৈনিক</button><button type="button" data-p="weekly" aria-pressed="false">সাপ্তাহিক</button><button type="button" data-p="monthly" aria-pressed="false">মাসিক</button></div></div>
+  <div class="page-tools"><a class="btn" id="csvBtn" href="/api/d/analytics/csv/" download><i data-lucide="download" class="i"></i>CSV এক্সপোর্ট</a>
+  <div class="seg" role="group" aria-label="সময়কাল"><button type="button" data-p="daily" aria-pressed="true">দৈনিক</button><button type="button" data-p="weekly" aria-pressed="false">সাপ্তাহিক</button><button type="button" data-p="monthly" aria-pressed="false">মাসিক</button></div></div></div>
 <div class="stats" id="stats"></div>
 <section class="panel"><div class="panel-head"><h2 id="chartTitle">বিক্রির গ্রাফ</h2></div><div class="chart-box"><canvas id="chart" role="img" aria-label="বিক্রির গ্রাফ"></canvas></div><div id="fallback" class="bar-fallback" hidden></div></section>
 <section class="panel"><div class="panel-head"><h2>সবচেয়ে বেশি বিক্রি হওয়া খাবার</h2></div><ul class="bars" id="top"></ul></section>

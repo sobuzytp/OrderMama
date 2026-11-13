@@ -30,6 +30,10 @@ urlpatterns = [
     path("d/qr/", d.QRPdfView.as_view()),
     path("d/branding/", d.BrandingView.as_view()),
     path("d/analytics/", d.AnalyticsView.as_view()),
+    path("d/analytics/csv/", d.SalesCsvView.as_view()),
+    path("d/menu-items/import/", d.MenuCsvImportView.as_view()),
+    path("d/onboarding/", d.OnboardingStatusView.as_view()),
+    path("d/table-board/", d.TableBoardView.as_view()),
     path("d/", include(router.urls)),
     # সুপার অ্যাডমিন
     path("sa/stats/", sa.StatsView.as_view()),

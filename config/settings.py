@@ -204,6 +204,100 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "same-origin"
+    X_FRAME_OPTIONS = "DENY"
     # HTTPS রিডাইরেক্ট/HSTS প্রক্সির (nginx) ওপর নির্ভর করে, তাই .env দিয়ে চালু করুন
     SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", default=False, cast=bool)
     SECURE_HSTS_SECONDS = config("SECURE_HSTS_SECONDS", default=0, cast=int)
+
+# ---------- ডিপ্লয়/রিলিজ পরিচয় ----------
+# কোন পরিবেশে চলছে: development / staging / production (লগ, Sentry ও চেক কমান্ডে ব্যবহৃত)
+DEPLOY_ENV = config("DEPLOY_ENV", default="development" if DEBUG else "production").strip().lower()
+# `/healthz/`-এ ও লগে দেখানোর জন্য (git commit / ইমেজ ট্যাগ বসাতে পারেন)
+RELEASE = config("RELEASE", default="dev")
+
+# ---------- ব্যাকআপ গন্তব্য ----------
+BACKUP_DIR = Path(config("BACKUP_DIR", default=str(BASE_DIR / "backups")))
+
+# ---------- লগ ----------
+LOG_DIR = Path(config("LOG_DIR", default=str(BASE_DIR / "logs")))
+LOG_LEVEL = config("DJANGO_LOG_LEVEL", default="INFO").upper()
+try:  # কনটেইনার/রিড-অনলি ফাইলসিস্টেম হলে শুধু কনসোলে লগ হবে
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_TO_FILE = os.access(LOG_DIR, os.W_OK)
+except OSError:
+    LOG_TO_FILE = False
+
+# ---------- এরর মনিটরিং ----------
+# Sentry চাইলে: pip install sentry-sdk && .env-এ SENTRY_DSN=... (না থাকলে নীরবে বাদ যায়)
+SENTRY_DSN = config("SENTRY_DSN", default="")
+SENTRY_TRACES_SAMPLE_RATE = config("SENTRY_TRACES_SAMPLE_RATE", default=0.0, cast=float)
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[DjangoIntegration()],
+            environment=DEPLOY_ENV,
+            release=RELEASE,
+            traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+            send_default_pii=False,
+        )
+    except ImportError:
+        logger.warning("SENTRY_DSN দেওয়া আছে কিন্তু sentry-sdk ইনস্টল নেই; Sentry বাদ যাচ্ছে।")
+
+# ---------- ইমেইল (মেয়াদ শেষের রিমাইন্ডার / এরর অ্যালার্ট) ----------
+EMAIL_BACKEND = config(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = config("EMAIL_HOST", default="")
+EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="OrderMama <noreply@ordermama.local>")
+SERVER_EMAIL = config("SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)
+ADMINS = [("Platform Admin", a) for a in env_list("PLATFORM_ADMIN_EMAILS") if a]
+MANAGERS = ADMINS
+
+# ---------- LOGGING ----------
+_handlers = {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}}
+if LOG_TO_FILE:
+    _handlers["file"] = {
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": str(LOG_DIR / "ordermama.log"),
+        "maxBytes": 5 * 1024 * 1024,
+        "backupCount": 5,
+        "formatter": "verbose",
+        "encoding": "utf-8",
+    }
+# 500 এরর ADMINS-এ ইমেইল (শুধু প্রোডাকশনে, ইমেইল কনফিগার থাকলে)
+if ADMINS and not DEBUG:
+    _handlers["mail_admins"] = {
+        "class": "django.utils.log.AdminEmailHandler",
+        "level": "ERROR",
+        "formatter": "verbose",
+    }
+_active_handlers = list(_handlers)
+_request_handlers = _active_handlers + (["mail_admins"] if "mail_admins" in _handlers else [])
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {"format": "{levelname} {asctime} {name} {module}:{lineno} {message}", "style": "{"},
+        "simple": {"format": "{levelname} {message}", "style": "{"},
+    },
+    "handlers": _handlers,
+    "root": {"handlers": _active_handlers, "level": LOG_LEVEL},
+    "loggers": {
+        "django": {"handlers": _active_handlers, "level": LOG_LEVEL, "propagate": False},
+        "django.request": {"handlers": _request_handlers, "level": "ERROR", "propagate": False},
+        "django.security": {"handlers": _active_handlers, "level": "WARNING", "propagate": False},
+        "apps": {"handlers": _active_handlers, "level": LOG_LEVEL, "propagate": False},
+    },
+}
+

@@ -58,6 +58,8 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         if not settings.DEBUG:
             raise CommandError("প্রোডাকশনে ডেমো ডেটা চালানো যাবে না (DJANGO_DEBUG=True লাগবে)।")
+        if getattr(settings, "DEPLOY_ENV", "") == "production":
+            raise CommandError("DEPLOY_ENV=production — ডেমো ডেটা নিষিদ্ধ। (ডেভ/স্টেজিংয়ে DEPLOY_ENV বদলান।)")
         call_command("seed_plans")
         premium, basic = Plan.objects.get(code="premium"), Plan.objects.get(code="basic")
         for slug, name, plan, color in [

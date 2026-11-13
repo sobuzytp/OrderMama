@@ -11,6 +11,11 @@
   {% if not can_qr %}<div class="banner warn" style="margin-top:14px;border-radius:10px"><i data-lucide="lock" class="i"></i><span>QR PDF জেনারেটর প্রিমিয়াম প্ল্যানের ফিচার।</span><a href="{% url 'dashboard:billing' %}">আপগ্রেড করুন</a></div>{% endif %}
 </section>
 <div id="tables" class="tables" style="margin-top:18px"></div>
+
+<section class="panel" style="margin-top:18px" aria-labelledby="boardTitle">
+  <div class="panel-head"><h2 id="boardTitle">টেবিল বোর্ড</h2><div id="boardSum" class="hint" role="status"></div></div>
+  <div id="board" class="tboard"></div>
+</section>
 <script>window.CAN_QR = {{ can_qr|yesno:"true,false" }};</script>
 {% endblock %}
 {% block scripts %}<script src="{% static 'js/dashboard-tables.js' %}"></script>{% endblock %}

@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Count, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status
@@ -52,18 +52,35 @@ class StatsView(SuperBase):
         expiring = [s for s in subs if s.state == "expiring"]
         grace = [s for s in subs if s.state == "grace"]
         expired = [s for s in subs if s.state == "expired"]
-        revenue = Payment.objects.filter(status__in=["paid", "approved"]).aggregate(t=Sum("amount"))["t"] or 0
-        month = Payment.objects.filter(status__in=["paid", "approved"], paid_at__gte=now - timedelta(days=30)).aggregate(t=Sum("amount"))["t"] or 0
+        money_qs = Payment.objects.filter(status__in=["paid", "approved"])
+        revenue = money_qs.aggregate(t=Sum("amount"))["t"] or 0
+        month = money_qs.filter(paid_at__gte=now - timedelta(days=30)).aggregate(t=Sum("amount"))["t"] or 0
+
+        # মাস-ভিত্তিক আয় (শেষ ৬ মাস) — তারিখ সবসময় Asia/Dhaka অনুযায়ী
+        from django.db.models.functions import TruncMonth
+
+        local_now = timezone.localtime(now)
+        rows = (
+            money_qs.filter(paid_at__gte=local_now.replace(day=1) - timedelta(days=190), paid_at__isnull=False)
+            .annotate(m=TruncMonth("paid_at")).values("m")
+            .annotate(total=Sum("amount"), n=Count("id")).order_by("-m")[:6]
+        )
+        monthly = [
+            {"label": timezone.localtime(r["m"]).strftime("%Y-%m"), "total": str(r["total"] or 0), "count": r["n"]}
+            for r in rows
+        ]
         return Response({
             "health": platform_health(),
             "restaurants": Restaurant.objects.count(),
             "pending": Restaurant.objects.filter(is_approved=False).count(),
             "blocked": Restaurant.objects.filter(is_blocked=True).count(),
             "active": sum(1 for s in subs if s.state in ("active", "expiring")),
+            "pending_payments": Payment.objects.filter(status=Payment.Status.SUBMITTED, gateway="manual").count(),
             "expiring": [{"name": s.restaurant.name, "days_left": s.days_left, "end_date": s.end_date.isoformat()} for s in expiring],
             "grace": [{"name": s.restaurant.name, "end_date": s.end_date.isoformat()} for s in grace],
             "expired": [{"name": s.restaurant.name, "end_date": s.end_date.isoformat()} for s in expired],
             "revenue_total": str(revenue), "revenue_30d": str(month),
+            "monthly_income": monthly,
         })
 
 
@@ -71,11 +88,13 @@ class ApproveView(SuperBase):
     @transaction.atomic
     def post(self, request, pk):
         r = get_object_or_404(Restaurant, pk=pk)
-        plan = Plan.objects.filter(code=request.data.get("plan", "basic"), is_active=True).first()
+        plan_code = request.data.get("plan") or "basic"
+        plan = Plan.objects.filter(code=plan_code, is_active=True).first()
         if not plan:
             return Response({"detail": "প্ল্যান পাওয়া যায়নি।"}, status=400)
+        raw_days = request.data.get("days")
         try:
-            days = int(request.data.get("days") or plan.duration_days)
+            days = plan.duration_days if raw_days in (None, "") else int(raw_days)
         except (TypeError, ValueError):
             return Response({"detail": "দিনের সংখ্যা সঠিক নয়।"}, status=400)
         if not 1 <= days <= 3650:

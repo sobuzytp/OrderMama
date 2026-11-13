@@ -39,6 +39,7 @@
         <h1>{{ restaurant.name }}</h1>
         {% if brand.welcome %}<p class="welcome">{{ brand.welcome }}</p>{% endif %}
       </div>
+      <button type="button" class="btn btn-ghost install-btn" data-install hidden><i data-lucide="download"></i><span>ফোনে রাখুন</span></button>
     </div>
     {% if table %}
     <div class="service-row" id="serviceRow" hidden>
